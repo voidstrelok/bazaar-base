@@ -1,6 +1,6 @@
 const FALLBACK_IMG = 'https://placehold.co/400x300?text=Sin+imagen';
 
-export default function ProductoCard({ producto, onAction, actionLabel = 'Ver detalle' }) {
+export default function ProductoCard({ producto, onAction, actionLabel = 'Ver detalle', onAddToCart }) {
   return (
     <div className="bg-white rounded-2xl shadow hover:shadow-lg transition-shadow overflow-hidden flex flex-col">
       <img
@@ -24,14 +24,24 @@ export default function ProductoCard({ producto, onAction, actionLabel = 'Ver de
             {producto.stock > 0 ? `Stock: ${producto.stock}` : 'Agotado'}
           </span>
         </div>
-        {onAction && (
-          <button
-            onClick={() => onAction(producto)}
-            className="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 rounded-xl transition-colors"
-          >
-            {actionLabel}
-          </button>
-        )}
+        <div className="mt-4 flex gap-2">
+          {onAction && (
+            <button
+              onClick={() => onAction(producto)}
+              className="flex-1 border border-indigo-600 text-indigo-600 hover:bg-indigo-50 text-sm font-medium py-2 rounded-xl transition-colors"
+            >
+              {actionLabel}
+            </button>
+          )}
+          {onAddToCart && producto.stock > 0 && (
+            <button
+              onClick={() => onAddToCart(producto)}
+              className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 rounded-xl transition-colors"
+            >
+              🛒 Agregar
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

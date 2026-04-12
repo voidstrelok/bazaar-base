@@ -10,6 +10,8 @@ public class Pedido
     public string Gateway { get; set; } = string.Empty; // transbank | mercadopago
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
 
+    public string? UrlRetorno { get; set; }
+
     public int UsuarioId { get; set; }
     public Usuario Usuario { get; set; } = null!;
 

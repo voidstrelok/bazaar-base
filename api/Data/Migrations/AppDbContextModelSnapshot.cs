@@ -162,6 +162,9 @@ namespace TiendaApi.Data.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<string>("UrlRetorno")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("UsuarioId")
                         .HasColumnType("int");
 

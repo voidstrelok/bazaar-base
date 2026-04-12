@@ -20,6 +20,7 @@
     <PackageReference Include="MercadoPago" Version="1.0.4477.31589" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="TransbankSdk" Version="4.0.2" />
   </ItemGroup>
 
 </Project>
