@@ -5,15 +5,22 @@ services:
       - "${FRONTEND_PORT}:80"
     depends_on:
       - api
+    restart: unless-stopped
     networks:
       - tienda_network
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 512M
 
   api:
     build: ./api
     ports:
       - "${API_PORT}:8080"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    restart: unless-stopped
     environment:
       - ConnectionStrings__Default=Server=db,1433;Database=${DB_NAME};User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True
       - JWT_SECRET=${JWT_SECRET}
@@ -21,20 +28,41 @@ services:
       - STORAGE_PROVIDER=${STORAGE_PROVIDER}
       - CLOUDINARY_URL=${CLOUDINARY_URL}
       - STORE_NAME=${STORE_NAME}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - tienda_network
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 512M
 
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
     ports:
       - "${DB_PORT}:1433"
+    restart: unless-stopped
     environment:
       - ACCEPT_EULA=Y
       - SA_PASSWORD=${SA_PASSWORD}
     volumes:
       - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P $$SA_PASSWORD -Q 'SELECT 1'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     networks:
       - tienda_network
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 512M
 
 networks:
   tienda_network:

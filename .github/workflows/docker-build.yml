@@ -1,0 +1,32 @@
+name: Docker Build Check
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  docker-api:
+    name: Build API Docker Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API image
+        run: docker build -t bazaar-api:test ./api
+
+  docker-frontend:
+    name: Build Frontend Docker Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Frontend image
+        run: docker build -t bazaar-frontend:test ./frontend
+        env:
+          VITE_API_URL: http://localhost:5000
+          VITE_STORE_NAME: Test
+          VITE_COLOR_PRIMARY: '#6366f1'
+          VITE_COLOR_SECONDARY: '#f59e0b'
+          VITE_PAYMENT_GATEWAY: transbank
