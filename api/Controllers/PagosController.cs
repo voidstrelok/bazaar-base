@@ -12,11 +12,13 @@ public class PagosController : ControllerBase
 {
     private readonly IPaymentGateway _gateway;
     private readonly AppDbContext _db;
+    private readonly IConfiguration _config;
 
-    public PagosController(IPaymentGateway gateway, AppDbContext db)
+    public PagosController(IPaymentGateway gateway, AppDbContext db, IConfiguration config)
     {
         _gateway = gateway;
         _db = db;
+        _config = config;
     }
 
     // POST api/payments/webhook — público, sin autenticación
@@ -40,11 +42,16 @@ public class PagosController : ControllerBase
     public async Task<IActionResult> Retorno()
     {
         string? frontendUrl = null;
+        string estado = "rechazado";
+        string pedidoIdStr = string.Empty;
 
         try
         {
             var result = await _gateway.ProcessWebhookAsync(Request);
             await ProcessPaymentResult(result);
+
+            pedidoIdStr = result.PedidoId;
+            estado = result.Aprobado ? "aprobado" : "rechazado";
 
             if (!string.IsNullOrEmpty(result.PedidoId) &&
                 int.TryParse(result.PedidoId, out var pedidoId))
@@ -52,18 +59,31 @@ public class PagosController : ControllerBase
                 var pedido = await _db.Pedidos.FindAsync(pedidoId);
                 frontendUrl = pedido?.UrlRetorno;
             }
-
-            var estado = result.Aprobado ? "aprobado" : "rechazado";
-            var redirectBase = frontendUrl ?? "/";
-            var separator = redirectBase.Contains('?') ? "&" : "?";
-            return Redirect($"{redirectBase}{separator}estado={estado}&pedidoId={result.PedidoId}");
         }
         catch
         {
-            var redirectBase = frontendUrl ?? "/";
-            var separator = redirectBase.Contains('?') ? "&" : "?";
-            return Redirect($"{redirectBase}{separator}estado=rechazado");
+            // fall through to redirect with error state
         }
+
+        var allowedBase = _config["Frontend:BaseUrl"];
+        var redirectBase = ResolveRetornoUrl(frontendUrl, allowedBase);
+        var separator = redirectBase.Contains('?') ? "&" : "?";
+        return Redirect($"{redirectBase}{separator}estado={estado}&pedidoId={pedidoIdStr}");
+    }
+
+    private static string ResolveRetornoUrl(string? storedUrl, string? allowedBase)
+    {
+        if (!string.IsNullOrEmpty(allowedBase))
+            return allowedBase.TrimEnd('/') + "/pago/resultado";
+
+        if (!string.IsNullOrEmpty(storedUrl) &&
+            Uri.TryCreate(storedUrl, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp))
+        {
+            return storedUrl;
+        }
+
+        return "/pago/resultado";
     }
 
     private async Task ProcessPaymentResult(WebhookResult result)
