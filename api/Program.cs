@@ -1,11 +1,13 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using TiendaApi.Data;
 using TiendaApi.Middleware;
 using TiendaApi.Services;
+using TiendaApi.Services.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,6 +38,15 @@ builder.Services.AddRolePolicies();
 // ── Servicios de Auth ────────────────────────────────────────────────────────
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+
+// ── Storage service (según config) ───────────────────────────────────────────
+builder.Services.AddStorageService(builder.Configuration);
+
+// ── Subida de archivos grandes ───────────────────────────────────────────────
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 10 * 1024 * 1024; // 10 MB
+});
 
 // ── CORS (desarrollo) ────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
@@ -87,6 +98,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.UseCors("DevCors");
 app.UseAuthentication();
 app.UseAuthorization();
