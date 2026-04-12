@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../shared/utils/api';
 import ProductoCard from '../components/ProductoCard';
+import CartIcon from '../components/CartIcon';
+import CartDrawer from '../components/CartDrawer';
+import useCart from '../../shared/hooks/useCart';
 
 function useDebounce(value, delay) {
   const [debounced, setDebounced] = useState(value);
@@ -19,6 +22,8 @@ export default function CatalogoPage() {
   const [categoriaId, setCategoriaId] = useState(null);
   const [busqueda, setBusqueda] = useState('');
   const debouncedBusqueda = useDebounce(busqueda, 300);
+  const addItem = useCart((s) => s.addItem);
+  const openCart = useCart((s) => s.openCart);
 
   const { data: categoriasData } = useQuery({
     queryKey: ['categorias'],
@@ -53,6 +58,11 @@ export default function CatalogoPage() {
     setPagina(1);
   };
 
+  const handleAddToCart = (producto) => {
+    addItem(producto);
+    openCart();
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -66,8 +76,11 @@ export default function CatalogoPage() {
             onChange={handleBusquedaChange}
             className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-indigo-400"
           />
+          <CartIcon />
         </div>
       </header>
+
+      <CartDrawer />
 
       <div className="max-w-7xl mx-auto px-4 py-8 flex gap-8">
         {/* Sidebar categorías */}
@@ -121,8 +134,8 @@ export default function CatalogoPage() {
               <ProductoCard
                 key={producto.id}
                 producto={producto}
-                actionLabel="Ver detalle"
                 onAction={(p) => navigate(`/producto/${p.slug}`)}
+                onAddToCart={handleAddToCart}
               />
             ))}
           </div>

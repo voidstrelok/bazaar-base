@@ -7,6 +7,7 @@ using Microsoft.OpenApi.Models;
 using TiendaApi.Data;
 using TiendaApi.Middleware;
 using TiendaApi.Services;
+using TiendaApi.Services.Payments;
 using TiendaApi.Services.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -41,6 +42,10 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 
 // ── Storage service (según config) ───────────────────────────────────────────
 builder.Services.AddStorageService(builder.Configuration);
+
+// ── Payment gateway (según config) ────────────────────────────────────────────
+builder.Services.AddPaymentGateway(builder.Configuration);
+builder.Services.AddScoped<IPedidoService, PedidoService>();
 
 // ── Subida de archivos grandes ───────────────────────────────────────────────
 builder.Services.Configure<FormOptions>(options =>
