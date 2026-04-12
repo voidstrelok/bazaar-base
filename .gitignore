@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+dist/
+build/
+
+# Environment files (never commit real secrets)
+.env
+frontend/.env
+api/.env
+
+# .NET build artifacts
+.vs/
+bin/
+obj/
+*.user
+*.suo
+
+# Generated client instances (created by scripts/new-client.sh)
+clientes/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
