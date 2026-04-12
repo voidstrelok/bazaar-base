@@ -8,6 +8,8 @@ jobs:
   docker-api:
     name: Build API Docker Image
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - name: Build API image
@@ -16,6 +18,8 @@ jobs:
   docker-frontend:
     name: Build Frontend Docker Image
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - name: Build Frontend image

@@ -16,7 +16,9 @@ public class HealthController : ControllerBase
     {
         try
         {
-            await _db.Database.ExecuteSqlRawAsync("SELECT 1");
+            var canConnect = await _db.Database.CanConnectAsync();
+            if (!canConnect)
+                return StatusCode(503, new { status = "unhealthy", error = "Cannot connect to database" });
             return Ok(new { status = "healthy", timestamp = DateTime.UtcNow });
         }
         catch (Exception ex)

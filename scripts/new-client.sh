@@ -130,7 +130,7 @@ while true; do
         echo -e "${YELLOW}⚠️  La contraseña debe contener al menos un número.${RESET}"
         continue
     fi
-    if ! echo "$SA_PASSWORD" | grep -qP '[^a-zA-Z0-9]'; then
+    if ! [[ "$SA_PASSWORD" =~ [^a-zA-Z0-9] ]]; then
         echo -e "${YELLOW}⚠️  La contraseña debe contener al menos un símbolo.${RESET}"
         continue
     fi
