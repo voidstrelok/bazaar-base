@@ -33,7 +33,7 @@ api.interceptors.response.use(
           return api(originalRequest);
         }
       } catch {
-        // refresh failed — limpiar y redirigir
+        // refresh failed — clear storage and redirect to login
       }
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');

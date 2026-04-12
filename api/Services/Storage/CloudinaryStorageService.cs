@@ -61,7 +61,9 @@ public class CloudinaryStorageService : IStorageService
 
             // Skip the version segment (v12345) if present
             var startIndex = uploadIndex + 1;
-            if (startIndex < segments.Length && segments[startIndex].StartsWith("v") &&
+            if (startIndex < segments.Length &&
+                segments[startIndex].Length > 1 &&
+                segments[startIndex].StartsWith("v") &&
                 int.TryParse(segments[startIndex][1..], out _))
             {
                 startIndex++;

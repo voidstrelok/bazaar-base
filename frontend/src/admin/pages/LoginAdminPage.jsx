@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import useAuth from '../../shared/hooks/useAuth';
 
 export default function LoginAdminPage() {
@@ -13,8 +13,7 @@ export default function LoginAdminPage() {
 
   // Redirect if already authenticated
   if (isAuthenticated) {
-    navigate('/admin', { replace: true });
-    return null;
+    return <Navigate to="/admin" replace />;
   }
 
   const handleSubmit = async (e) => {
