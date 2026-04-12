@@ -224,6 +224,7 @@ DB Name: ${DB_NAME}
 Payment gateway: ${PAYMENT_GATEWAY}
 Storage provider: ${STORAGE_PROVIDER}
 EOF
+chmod 600 "$CLIENT_DIR/INSTALL.log"
 
 # ── Instrucciones finales coloreadas ────────────────────────────────────────
 echo ""
