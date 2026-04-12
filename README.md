@@ -193,12 +193,81 @@ VPS Host
 
 ---
 
+## Fase 2 — Modelo de BD y Auth JWT
+
+### Ejecutar la migración
+
+```bash
+cd api
+cp appsettings.example.json appsettings.Development.json
+# Asegúrate de tener SQL Server disponible y editar la cadena de conexión
+dotnet ef database update
+```
+
+### Endpoints de autenticación
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `POST` | `/api/auth/register` | Registro de nuevo usuario |
+| `POST` | `/api/auth/login` | Login y obtención de tokens |
+| `POST` | `/api/auth/refresh` | Renovar access token con refresh token |
+| `POST` | `/api/auth/revoke` | Revocar refresh token (requiere autenticación) |
+
+#### Ejemplo de registro
+```json
+POST /api/auth/register
+{
+  "nombre": "Juan Pérez",
+  "email": "juan@ejemplo.com",
+  "password": "MiPassword123!"
+}
+```
+
+#### Ejemplo de login
+```json
+POST /api/auth/login
+{
+  "email": "juan@ejemplo.com",
+  "password": "MiPassword123!"
+}
+```
+
+#### Ejemplo de refresh
+```json
+POST /api/auth/refresh
+{
+  "accessToken": "<jwt_expirado>",
+  "refreshToken": "<refresh_token>"
+}
+```
+
+### Roles disponibles
+
+| Rol | Descripción |
+|-----|-------------|
+| `CLIENTE` | Rol por defecto al registrarse |
+| `ADMIN` | Acceso al panel de administración |
+
+Para proteger endpoints con rol admin usa el atributo:
+```csharp
+[Authorize(Policy = "RequireAdmin")]
+```
+
+### Usar Bearer token en Swagger
+
+1. Obtén el `accessToken` con `/api/auth/login`
+2. Abre Swagger UI → Haz clic en **Authorize** (candado 🔒)
+3. Ingresa: `Bearer <tu_token>`
+4. Confirma con **Authorize**
+
+---
+
 ## Fases de Desarrollo
 
 | Fase | Descripción | Estado |
 |------|-------------|--------|
-| **Fase 1** | Base, estructura, Docker Compose, Auth JWT + roles | ✅ En curso |
-| **Fase 2** | Catálogo, CRUD productos/categorías, Storage, panel admin | ⏳ Pendiente |
+| **Fase 1** | Base, estructura, Docker Compose | ✅ Completada |
+| **Fase 2** | Modelo de BD, EF Core, Auth JWT + roles | ✅ Completada |
 | **Fase 3** | Tienda pública, carrito, checkout UI | ⏳ Pendiente |
 | **Fase 4** | Pasarela de pagos (Transbank + MercadoPago) | ⏳ Pendiente |
 | **Fase 5** | Deploy, replicabilidad, script new-client.sh | ✅ Incluido en Fase 1 |
