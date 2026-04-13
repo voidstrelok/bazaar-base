@@ -5,7 +5,8 @@ export function ProtectedRoute({ children, requiredRole }) {
   const { isAuthenticated, user } = useAuth();
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    const loginPath = requiredRole === 'ADMIN' ? '/admin/login' : '/login';
+    return <Navigate to={loginPath} replace />;
   }
 
   if (requiredRole && user?.rol !== requiredRole) {

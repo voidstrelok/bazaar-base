@@ -10,6 +10,9 @@ import ProductoDetallePage from './store/pages/ProductoDetallePage';
 import CheckoutPage from './store/pages/CheckoutPage';
 import PagoResultadoPage from './store/pages/PagoResultadoPage';
 import MisPedidosPage from './store/pages/MisPedidosPage';
+import LoginPage from './store/pages/LoginPage';
+import RegistroPage from './store/pages/RegistroPage';
+import MiCuentaPage from './store/pages/MiCuentaPage';
 
 // Admin
 import AdminLayout from './admin/layout/AdminLayout';
@@ -17,6 +20,7 @@ import DashboardPage from './admin/pages/DashboardPage';
 import ProductosAdminPage from './admin/pages/ProductosAdminPage';
 import CategoriasAdminPage from './admin/pages/CategoriasAdminPage';
 import PedidosAdminPage from './admin/pages/PedidosAdminPage';
+import UsuariosAdminPage from './admin/pages/UsuariosAdminPage';
 import LoginAdminPage from './admin/pages/LoginAdminPage';
 
 const queryClient = new QueryClient();
@@ -30,7 +34,16 @@ export default function App() {
           {/* Tienda pública */}
           <Route path="/" element={<CatalogoPage />} />
           <Route path="/producto/:slug" element={<ProductoDetallePage />} />
-          <Route path="/login" element={<LoginAdminPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/registro" element={<RegistroPage />} />
+          <Route
+            path="/mi-cuenta"
+            element={
+              <ProtectedRoute>
+                <MiCuentaPage />
+              </ProtectedRoute>
+            }
+          />
           {ENABLE_CHECKOUT && <Route path="/checkout" element={<CheckoutPage />} />}
           {ENABLE_CHECKOUT && <Route path="/pago/resultado" element={<PagoResultadoPage />} />}
           {ENABLE_CHECKOUT && (
@@ -43,6 +56,9 @@ export default function App() {
               }
             />
           )}
+
+          {/* Admin — login */}
+          <Route path="/admin/login" element={<LoginAdminPage />} />
 
           {/* Admin — protegido */}
           <Route
@@ -57,6 +73,7 @@ export default function App() {
             <Route path="productos" element={<ProductosAdminPage />} />
             <Route path="categorias" element={<CategoriasAdminPage />} />
             <Route path="pedidos" element={<PedidosAdminPage />} />
+            <Route path="usuarios" element={<UsuariosAdminPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
