@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../shared/utils/api';
 import ProductoCard from '../components/ProductoCard';
 import CartIcon from '../components/CartIcon';
 import CartDrawer from '../components/CartDrawer';
 import useCart from '../../shared/hooks/useCart';
+import useAuth from '../../shared/hooks/useAuth';
 import { ENABLE_CHECKOUT } from '../../shared/utils/features';
 
 function useDebounce(value, delay) {
@@ -25,6 +26,7 @@ export default function CatalogoPage() {
   const debouncedBusqueda = useDebounce(busqueda, 300);
   const addItem = useCart((s) => s.addItem);
   const openCart = useCart((s) => s.openCart);
+  const { isAuthenticated, user, logout } = useAuth();
 
   const { data: categoriasData } = useQuery({
     queryKey: ['categorias'],
@@ -77,6 +79,22 @@ export default function CatalogoPage() {
             onChange={handleBusquedaChange}
             className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-indigo-400"
           />
+          {isAuthenticated ? (
+            <div className="relative group">
+              <button className="text-sm text-gray-700 hover:text-indigo-600 font-medium flex items-center gap-1">
+                👤 {user?.nombre?.split(' ')[0]}
+              </button>
+              <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-lg border py-1 w-44 hidden group-hover:block z-20">
+                <Link to="/mi-cuenta" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Mi cuenta</Link>
+                {ENABLE_CHECKOUT && (
+                  <Link to="/mis-pedidos" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Mis pedidos</Link>
+                )}
+                <button onClick={() => logout()} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Cerrar sesión</button>
+              </div>
+            </div>
+          ) : (
+            <Link to="/login" className="text-sm text-indigo-600 hover:underline font-medium">Ingresar</Link>
+          )}
           {ENABLE_CHECKOUT && <CartIcon />}
         </div>
       </header>

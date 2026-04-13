@@ -1,48 +1,41 @@
 import { useState } from 'react';
-import { useNavigate, Navigate, Link } from 'react-router-dom';
+import { useNavigate, Navigate, Link, useSearchParams } from 'react-router-dom';
 import useAuth from '../../shared/hooks/useAuth';
 
-export default function LoginAdminPage() {
+export default function LoginPage() {
   const navigate = useNavigate();
-  const { login, isAuthenticated, user } = useAuth();
+  const [params] = useSearchParams();
+  const redirect = params.get('redirect') || '/';
+  const { login, isAuthenticated } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Only redirect to admin if already authenticated as ADMIN
-  if (isAuthenticated && user?.rol === 'ADMIN') {
-    return <Navigate to="/admin" replace />;
-  }
+  if (isAuthenticated) return <Navigate to={redirect} replace />;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
-    if (!email.trim() || !password.trim()) {
-      setError('Por favor completa todos los campos.');
-      return;
-    }
-
     setLoading(true);
     try {
       await login(email.trim(), password);
-      navigate('/admin', { replace: true });
+      navigate(redirect, { replace: true });
     } catch (err) {
-      setError(
-        err?.response?.data?.message || 'Credenciales inválidas. Intenta de nuevo.'
-      );
+      setError(err?.response?.data?.message || 'Credenciales inválidas.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-8">
-        <h1 className="text-2xl font-bold text-gray-800 text-center mb-1">🛒 Bazaar</h1>
-        <p className="text-sm text-gray-500 text-center mb-6">Panel de Administración</p>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8">
+        <Link to="/" className="block text-center text-2xl font-bold text-indigo-700 mb-1">
+          🛍️ Bazaar
+        </Link>
+        <p className="text-sm text-gray-500 text-center mb-6">Inicia sesión en tu cuenta</p>
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-4 text-sm">
@@ -59,7 +52,7 @@ export default function LoginAdminPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@ejemplo.com"
+              placeholder="tucorreo@ejemplo.com"
               required
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
             />
@@ -86,9 +79,16 @@ export default function LoginAdminPage() {
           </button>
         </form>
 
+        <p className="text-center text-sm text-gray-500 mt-4">
+          ¿No tienes cuenta?{' '}
+          <Link to="/registro" className="text-indigo-600 hover:underline font-medium">
+            Regístrate gratis
+          </Link>
+        </p>
+
         <p className="text-center text-xs text-gray-400 mt-6">
-          <Link to="/" className="hover:underline">
-            ← Volver a la tienda
+          <Link to="/admin/login" className="hover:underline">
+            Acceso administrador
           </Link>
         </p>
       </div>
