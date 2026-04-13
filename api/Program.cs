@@ -100,6 +100,14 @@ builder.Services.AddSwaggerGen(c =>
 // ── Build ────────────────────────────────────────────────────────────────────
 var app = builder.Build();
 
+// ── Seed inicial ─────────────────────────────────────────────────────────────
+using (var scope = app.Services.CreateScope())
+{
+    var db     = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    await DbSeeder.SeedAsync(db, config);
+}
+
 // Swagger siempre disponible (proteger con auth en producción si se desea)
 app.UseSwagger();
 app.UseSwaggerUI();
