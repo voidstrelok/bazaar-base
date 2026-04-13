@@ -1,3 +1,5 @@
+import { ENABLE_CHECKOUT, CONTACT_TYPE, buildContactUrl } from '../../shared/utils/features';
+
 const FALLBACK_IMG = 'https://placehold.co/400x300?text=Sin+imagen';
 
 export default function ProductoCard({ producto, onAction, actionLabel = 'Ver detalle', onAddToCart }) {
@@ -33,13 +35,29 @@ export default function ProductoCard({ producto, onAction, actionLabel = 'Ver de
               {actionLabel}
             </button>
           )}
-          {onAddToCart && producto.stock > 0 && (
-            <button
-              onClick={() => onAddToCart(producto)}
-              className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 rounded-xl transition-colors"
-            >
-              🛒 Agregar
-            </button>
+          {ENABLE_CHECKOUT ? (
+            onAddToCart && producto.stock > 0 && (
+              <button
+                onClick={() => onAddToCart(producto)}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 rounded-xl transition-colors"
+              >
+                🛒 Agregar
+              </button>
+            )
+          ) : (
+            CONTACT_TYPE !== 'none' && (() => {
+              const url = buildContactUrl(producto.nombre);
+              return url ? (
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 rounded-xl transition-colors text-center"
+                >
+                  {CONTACT_TYPE === 'whatsapp' ? '💬 Consultar' : '✉️ Consultar'}
+                </a>
+              ) : null;
+            })()
           )}
         </div>
       </div>

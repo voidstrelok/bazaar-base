@@ -1,6 +1,12 @@
 services:
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        - VITE_ENABLE_CHECKOUT=${ENABLE_CHECKOUT:-true}
+        - VITE_CONTACT_TYPE=${CONTACT_TYPE:-none}
+        - VITE_CONTACT_VALUE=${CONTACT_VALUE:-}
+        - VITE_CONTACT_MESSAGE=${CONTACT_MESSAGE:-Hola, me interesa el producto: {nombre}}
     ports:
       - "${FRONTEND_PORT}:80"
     depends_on:
@@ -37,6 +43,7 @@ services:
       - Admin__Email=${ADMIN_EMAIL:-admin@tienda.com}
       - Admin__Password=${ADMIN_PASSWORD:-Admin@123456}
       - Admin__Nombre=${ADMIN_NOMBRE:-Administrador}
+      - Features__EnableCheckout=${ENABLE_CHECKOUT:-true}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s

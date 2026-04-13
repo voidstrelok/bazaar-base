@@ -160,6 +160,24 @@ else
     LOCAL_STORAGE_PATH="${LOCAL_STORAGE_PATH:-/app/uploads}"
 fi
 
+# Checkout
+read -rp "¿Habilitar checkout y carrito? (true|false) [true]: " ENABLE_CHECKOUT
+ENABLE_CHECKOUT="${ENABLE_CHECKOUT:-true}"
+
+CONTACT_TYPE="none"
+CONTACT_VALUE=""
+CONTACT_MESSAGE="Hola, me interesa el producto: {nombre}"
+
+if [ "$ENABLE_CHECKOUT" = "false" ]; then
+    read -rp "Tipo de contacto cuando checkout está deshabilitado (whatsapp|email|none) [none]: " CONTACT_TYPE
+    CONTACT_TYPE="${CONTACT_TYPE:-none}"
+    if [ "$CONTACT_TYPE" != "none" ]; then
+        read -rp "Valor de contacto (número de WhatsApp o email): " CONTACT_VALUE
+        read -rp "Mensaje de contacto [Hola, me interesa el producto: {nombre}]: " CONTACT_MESSAGE
+        CONTACT_MESSAGE="${CONTACT_MESSAGE:-Hola, me interesa el producto: {nombre}}"
+    fi
+fi
+
 # ── Detección de conflictos ──────────────────────────────────────────────────
 CLIENT_DIR="$ROOT_DIR/clientes/$CLIENT_NAME"
 
@@ -209,6 +227,14 @@ LOCAL_STORAGE_PATH=${LOCAL_STORAGE_PATH}
 
 # CORS
 CORS_ORIGINS=http://localhost:3000
+
+# Checkout y carrito
+ENABLE_CHECKOUT=${ENABLE_CHECKOUT}
+
+# Botón de contacto (cuando ENABLE_CHECKOUT=false)
+CONTACT_TYPE=${CONTACT_TYPE}
+CONTACT_VALUE=${CONTACT_VALUE}
+CONTACT_MESSAGE=${CONTACT_MESSAGE}
 EOF
 
 # ── Generar nginx.conf desde la plantilla ────────────────────────────────────
@@ -228,6 +254,7 @@ Puerto DB: ${DB_PORT}
 DB Name: ${DB_NAME}
 Payment gateway: ${PAYMENT_GATEWAY}
 Storage provider: ${STORAGE_PROVIDER}
+Enable checkout: ${ENABLE_CHECKOUT}
 EOF
 chmod 600 "$CLIENT_DIR/INSTALL.log"
 
