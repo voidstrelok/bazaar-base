@@ -7,6 +7,7 @@ public static class DbSeeder
 {
     public static async Task SeedAsync(AppDbContext db, IConfiguration config)
     {
+        // Solo crear si no existe ningún ADMIN
         if (await db.Usuarios.AnyAsync(u => u.Rol == "ADMIN"))
             return;
 
