@@ -1,12 +1,15 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../shared/utils/api';
+import useCart from '../../shared/hooks/useCart';
+import { ENABLE_CHECKOUT, CONTACT_TYPE, buildContactUrl } from '../../shared/utils/features';
 
 const FALLBACK_IMG = 'https://placehold.co/600x400?text=Sin+imagen';
 
 export default function ProductoDetallePage() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const addItem = useCart((s) => s.addItem);
 
   const { data: producto, isLoading, isError } = useQuery({
     queryKey: ['producto', slug],
@@ -79,12 +82,29 @@ export default function ProductoDetallePage() {
                 {producto.stock > 0 ? `${producto.stock} disponibles` : 'Agotado'}
               </span>
             </div>
-            <button
-              disabled={producto.stock === 0}
-              className="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 text-white font-semibold py-3 rounded-xl transition-colors text-lg"
-            >
-              🛒 Agregar al carrito
-            </button>
+            {ENABLE_CHECKOUT ? (
+              <button
+                onClick={() => { addItem(producto); navigate('/checkout'); }}
+                disabled={producto.stock === 0}
+                className="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 text-white font-semibold py-3 rounded-xl transition-colors text-lg"
+              >
+                🛒 Agregar al carrito
+              </button>
+            ) : (
+              CONTACT_TYPE !== 'none' && (() => {
+                const url = buildContactUrl(producto.nombre);
+                return url ? (
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl transition-colors text-lg block text-center"
+                  >
+                    {CONTACT_TYPE === 'whatsapp' ? '💬 Consultar por WhatsApp' : '✉️ Consultar por Email'}
+                  </a>
+                ) : null;
+              })()
+            )}
           </div>
         </div>
       </div>

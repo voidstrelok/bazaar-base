@@ -114,6 +114,7 @@ app.UseSwaggerUI();
 
 app.UseStaticFiles();
 app.UseCors("AppCors");
+app.UseMiddleware<CheckoutFeatureMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { ProtectedRoute } from './shared/components/ProtectedRoute';
+import { ENABLE_CHECKOUT } from './shared/utils/features';
 
 // Store (public)
 import CatalogoPage from './store/pages/CatalogoPage';
@@ -30,16 +31,18 @@ export default function App() {
           <Route path="/" element={<CatalogoPage />} />
           <Route path="/producto/:slug" element={<ProductoDetallePage />} />
           <Route path="/login" element={<LoginAdminPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/pago/resultado" element={<PagoResultadoPage />} />
-          <Route
-            path="/mis-pedidos"
-            element={
-              <ProtectedRoute>
-                <MisPedidosPage />
-              </ProtectedRoute>
-            }
-          />
+          {ENABLE_CHECKOUT && <Route path="/checkout" element={<CheckoutPage />} />}
+          {ENABLE_CHECKOUT && <Route path="/pago/resultado" element={<PagoResultadoPage />} />}
+          {ENABLE_CHECKOUT && (
+            <Route
+              path="/mis-pedidos"
+              element={
+                <ProtectedRoute>
+                  <MisPedidosPage />
+                </ProtectedRoute>
+              }
+            />
+          )}
 
           {/* Admin — protegido */}
           <Route

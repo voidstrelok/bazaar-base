@@ -6,6 +6,7 @@ import ProductoCard from '../components/ProductoCard';
 import CartIcon from '../components/CartIcon';
 import CartDrawer from '../components/CartDrawer';
 import useCart from '../../shared/hooks/useCart';
+import { ENABLE_CHECKOUT } from '../../shared/utils/features';
 
 function useDebounce(value, delay) {
   const [debounced, setDebounced] = useState(value);
@@ -76,11 +77,11 @@ export default function CatalogoPage() {
             onChange={handleBusquedaChange}
             className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-indigo-400"
           />
-          <CartIcon />
+          {ENABLE_CHECKOUT && <CartIcon />}
         </div>
       </header>
 
-      <CartDrawer />
+      {ENABLE_CHECKOUT && <CartDrawer />}
 
       <div className="max-w-7xl mx-auto px-4 py-8 flex gap-8">
         {/* Sidebar categorías */}
@@ -135,7 +136,7 @@ export default function CatalogoPage() {
                 key={producto.id}
                 producto={producto}
                 onAction={(p) => navigate(`/producto/${p.slug}`)}
-                onAddToCart={handleAddToCart}
+                onAddToCart={ENABLE_CHECKOUT ? handleAddToCart : undefined}
               />
             ))}
           </div>
