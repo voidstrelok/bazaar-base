@@ -110,10 +110,17 @@ public class AuthController : ControllerBase
             return Unauthorized();
 
         if (!string.IsNullOrWhiteSpace(request.Nombre))
+        {
+            if (request.Nombre.Trim().Length < 2)
+                return BadRequest(new { message = "El nombre debe tener al menos 2 caracteres." });
             u.Nombre = request.Nombre.Trim();
+        }
 
         if (!string.IsNullOrWhiteSpace(request.NuevaPassword))
         {
+            if (request.NuevaPassword.Length < 8)
+                return BadRequest(new { message = "La contraseña debe tener al menos 8 caracteres." });
+
             if (string.IsNullOrWhiteSpace(request.PasswordActual))
                 return BadRequest(new { message = "Debes ingresar tu contraseña actual para cambiarla." });
 

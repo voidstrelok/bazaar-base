@@ -27,7 +27,10 @@ public class UsuariosController : ControllerBase
         var query = _db.Usuarios.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(busqueda))
-            query = query.Where(u => u.Nombre.Contains(busqueda) || u.Email.Contains(busqueda));
+        {
+            var lower = busqueda.ToLower();
+            query = query.Where(u => u.Nombre.ToLower().Contains(lower) || u.Email.ToLower().Contains(lower));
+        }
 
         var total = await query.CountAsync();
         var usuarios = await query
@@ -55,6 +58,10 @@ public class UsuariosController : ControllerBase
     {
         var u = await _db.Usuarios.FindAsync(id);
         if (u is null) return NotFound();
+
+        // Validate role if provided
+        if (request.Rol is not null && request.Rol != "ADMIN" && request.Rol != "CLIENTE")
+            return BadRequest(new { message = "Rol inválido. Los valores permitidos son ADMIN o CLIENTE." });
 
         // Evitar que el admin se desactive a sí mismo
         var selfId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0");
