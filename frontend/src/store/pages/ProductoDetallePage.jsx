@@ -30,7 +30,7 @@ export default function ProductoDetallePage() {
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
         <p className="text-gray-500 text-lg">Producto no encontrado.</p>
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/catalogo')}
           className="text-indigo-600 hover:underline text-sm"
         >
           ← Volver al catálogo
@@ -41,16 +41,14 @@ export default function ProductoDetallePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 py-4">
-          <button
-            onClick={() => navigate('/')}
-            className="text-indigo-600 hover:underline text-sm"
-          >
-            ← Volver al catálogo
-          </button>
-        </div>
-      </header>
+      <div className="max-w-5xl mx-auto px-4 pt-6">
+        <button
+          onClick={() => navigate('/catalogo')}
+          className="text-indigo-600 hover:underline text-sm"
+        >
+          ← Volver al catálogo
+        </button>
+      </div>
 
       <div className="max-w-5xl mx-auto px-4 py-10">
         <div className="bg-white rounded-2xl shadow-md overflow-hidden md:flex">
