@@ -53,11 +53,15 @@ builder.Services.Configure<FormOptions>(options =>
     options.MultipartBodyLengthLimit = 10 * 1024 * 1024; // 10 MB
 });
 
-// ── CORS (desarrollo) ────────────────────────────────────────────────────────
+// ── CORS (configurable vía CORS__Origins) ───────────────────────────────────
+var corsOrigins = builder.Configuration["CORS__Origins"]
+    ?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    ?? new[] { "http://localhost:3000" };
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("DevCors", policy =>
-        policy.WithOrigins("http://localhost:3000")
+    options.AddPolicy("AppCors", policy =>
+        policy.WithOrigins(corsOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod());
 });
@@ -96,15 +100,12 @@ builder.Services.AddSwaggerGen(c =>
 // ── Build ────────────────────────────────────────────────────────────────────
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Swagger siempre disponible (proteger con auth en producción si se desea)
+app.UseSwagger();
+app.UseSwaggerUI();
 
-app.UseHttpsRedirection();
 app.UseStaticFiles();
-app.UseCors("DevCors");
+app.UseCors("AppCors");
 app.UseAuthentication();
 app.UseAuthorization();
 
