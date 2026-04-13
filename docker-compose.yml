@@ -34,6 +34,9 @@ services:
       - Cloudinary__Url=${CLOUDINARY_URL:-}
       - STORE_NAME=${STORE_NAME}
       - CORS__Origins=${CORS_ORIGINS:-http://localhost:3000}
+      - Admin__Email=${ADMIN_EMAIL:-admin@tienda.com}
+      - Admin__Password=${ADMIN_PASSWORD:-Admin@123456}
+      - Admin__Nombre=${ADMIN_NOMBRE:-Administrador}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
