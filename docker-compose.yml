@@ -44,6 +44,8 @@ services:
       - Admin__Password=${ADMIN_PASSWORD:-Admin@123456}
       - Admin__Nombre=${ADMIN_NOMBRE:-Administrador}
       - Features__EnableCheckout=${ENABLE_CHECKOUT:-true}
+    volumes:
+      - uploads_data:/app/uploads
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
@@ -86,3 +88,4 @@ networks:
 
 volumes:
   sqlserver_data:
+  uploads_data:
