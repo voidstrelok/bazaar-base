@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using TiendaApi.Data;
@@ -109,19 +110,23 @@ using (var scope = app.Services.CreateScope())
     var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
     await DbSeeder.SeedAsync(db, config);
 }
-// ── Seed inicial ─────────────────────────────────────────────────────────────
-using (var scope = app.Services.CreateScope())
-{
-    var db     = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-    await DbSeeder.SeedAsync(db, config);
-}
 
 // Swagger siempre disponible (proteger con auth en producción si se desea)
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseStaticFiles();
+
+var uploadsPath = builder.Configuration["Storage:LocalPath"]
+    ?? Path.Combine(builder.Environment.ContentRootPath, "uploads");
+if (!Directory.Exists(uploadsPath))
+    Directory.CreateDirectory(uploadsPath);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
+});
+
 app.UseCors("AppCors");
 app.UseMiddleware<CheckoutFeatureMiddleware>();
 app.UseAuthentication();
