@@ -100,6 +100,15 @@ builder.Services.AddSwaggerGen(c =>
 // ── Build ────────────────────────────────────────────────────────────────────
 var app = builder.Build();
 
+
+// Migraciones
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate(); // ← aplica todas las migraciones pendientes
+    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    await DbSeeder.SeedAsync(db, config);
+}
 // ── Seed inicial ─────────────────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {

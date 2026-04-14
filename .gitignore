@@ -6,7 +6,7 @@ build/
 # Environment files (never commit real secrets)
 .env
 frontend/.env
-api/.env
+api/appsettings.json
 
 # .NET build artifacts
 .vs/
