@@ -15,6 +15,9 @@ export default {
         'dark-text': '#F5F5F5',
         'dark-muted': '#A3A3A3',
       },
+      fontFamily: {
+      anta: ['Anta', 'sans-serif'],
+    }
     },
   },
   plugins: [],

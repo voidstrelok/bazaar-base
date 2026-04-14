@@ -25,7 +25,7 @@ export default function Navbar() {
         {/* Logo */}
         <Link
           to="/"
-          className="text-xl font-extrabold text-brand tracking-wide mr-auto"
+          className="font-anta text-xl text-brand tracking-wide mr-auto"
           onClick={() => setMenuOpen(false)}
         >
           {STORE_NAME}
