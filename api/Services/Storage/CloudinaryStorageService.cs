@@ -9,8 +9,8 @@ public class CloudinaryStorageService : IStorageService
 
     public CloudinaryStorageService(IConfiguration configuration)
     {
-        var cloudinaryUrl = configuration["CLOUDINARY_URL"]
-            ?? throw new InvalidOperationException("CLOUDINARY_URL is not configured.");
+        var cloudinaryUrl = configuration["Cloudinary:Url"]
+            ?? throw new InvalidOperationException("Cloudinary:Url is not configured.");
         _cloudinary = new Cloudinary(cloudinaryUrl);
         _cloudinary.Api.Secure = true;
     }
