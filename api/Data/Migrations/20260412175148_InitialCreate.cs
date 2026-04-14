@@ -85,6 +85,7 @@ namespace TiendaApi.Data.Migrations
                     Estado = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Gateway = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     FechaCreacion = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UrlRetorno = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     UsuarioId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
