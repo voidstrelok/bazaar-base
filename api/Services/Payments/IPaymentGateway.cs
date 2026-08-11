@@ -18,9 +18,13 @@ public record PaymentResponse(
 
 public record WebhookResult(
     bool Aprobado,
+    bool Pendiente,
     string PedidoId,
     string ReferenciaPago,
-    string DatosRaw
+    string DatosRaw,
+    decimal? Monto = null,
+    string? Moneda = null,
+    bool Verificado = false
 );
 
 public interface IPaymentGateway

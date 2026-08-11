@@ -21,12 +21,16 @@ public class PedidoService : IPedidoService
 
     public async Task<InitPaymentResponse> CreatePedidoAsync(CreatePedidoRequest request, int usuarioId)
     {
-        var items = request.Items.ToList();
+        var items = request.Items?.ToList() ?? new List<ItemCarritoRequest>();
         if (!items.Any())
             throw new InvalidOperationException("El carrito está vacío.");
 
         var productoIds = items.Select(i => i.ProductoId).ToList();
+
+        // Carga con AsNoTracking para validación inicial (precio, activo).
+        // El decremento real de stock se hace con ExecuteUpdateAsync dentro de la transacción.
         var productos = await _db.Productos
+            .AsNoTracking()
             .Where(p => productoIds.Contains(p.Id))
             .ToListAsync();
 
@@ -36,8 +40,8 @@ public class PedidoService : IPedidoService
                 ?? throw new InvalidOperationException($"Producto {item.ProductoId} no encontrado.");
             if (!producto.Activo)
                 throw new InvalidOperationException($"El producto '{producto.Nombre}' no está disponible.");
-            if (producto.Stock < item.Cantidad)
-                throw new InvalidOperationException($"Stock insuficiente para '{producto.Nombre}'.");
+            if (item.Cantidad <= 0)
+                throw new InvalidOperationException($"La cantidad para '{producto.Nombre}' debe ser mayor a cero.");
         }
 
         var total = items.Sum(i =>
@@ -48,13 +52,33 @@ public class PedidoService : IPedidoService
 
         var gatewayName = _config["Payment:Gateway"] ?? "transbank";
 
+        // ── Transacción atómica: decremento de stock + creación del pedido ────
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+
+        // Decrementar stock de cada producto de forma atómica (UPDATE ... WHERE Stock >= cantidad).
+        // Si otro hilo ya consumió el stock, rowsAffected == 0 y se lanza excepción.
+        foreach (var item in items)
+        {
+            var nombre = productos.First(p => p.Id == item.ProductoId).Nombre;
+            var rowsAffected = await _db.Productos
+                .Where(p => p.Id == item.ProductoId && p.Stock >= item.Cantidad)
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.Stock, p => p.Stock - item.Cantidad));
+
+            if (rowsAffected == 0)
+                throw new InvalidOperationException($"Stock insuficiente para '{nombre}'.");
+        }
+
+        var publicBaseUrl = _config["PublicBaseUrl"]?.TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(publicBaseUrl))
+            throw new InvalidOperationException("PublicBaseUrl no está configurado.");
+
         var pedido = new Pedido
         {
             Total = total,
             Estado = EstadoPedido.Pendiente,
             Gateway = gatewayName,
             UsuarioId = usuarioId,
-            UrlRetorno = request.UrlRetorno,
+            UrlRetorno = $"{publicBaseUrl}/pago/resultado",
             FechaCreacion = DateTime.UtcNow,
         };
         _db.Pedidos.Add(pedido);
@@ -69,17 +93,17 @@ public class PedidoService : IPedidoService
                 Cantidad = item.Cantidad,
                 PrecioUnitario = producto.Precio,
             });
-            producto.Stock -= item.Cantidad;
         }
 
         await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
 
         var paymentRequest = new PaymentRequest(
             PedidoId: pedido.Id,
             Monto: total,
             Descripcion: $"Pedido #{pedido.Id}",
-            UrlRetorno: $"{request.UrlWebhook.TrimEnd('/')}/retorno",
-            UrlWebhook: request.UrlWebhook
+            UrlRetorno: $"{publicBaseUrl}/api/payments/retorno",
+            UrlWebhook: $"{publicBaseUrl}/api/payments"
         );
 
         var paymentResponse = await _gateway.CreatePaymentAsync(paymentRequest);
@@ -144,9 +168,26 @@ public class PedidoService : IPedidoService
 
     public async Task UpdateEstadoAsync(int pedidoId, EstadoPedido estado)
     {
-        var pedido = await _db.Pedidos.FindAsync(pedidoId)
+        var pedido = await _db.Pedidos
+            .Include(p => p.Detalles).ThenInclude(d => d.Producto)
+            .FirstOrDefaultAsync(p => p.Id == pedidoId)
             ?? throw new KeyNotFoundException("Pedido no encontrado.");
+
+        var estadoAnterior = pedido.Estado;
         pedido.Estado = estado;
+
+        // Restaurar stock si se cancela un pedido que aún tenía stock reservado
+        // (Pendiente o Pagado). No restaurar si ya estaba Cancelado o si fue Entregado.
+        if (estado == EstadoPedido.Cancelado &&
+            estadoAnterior != EstadoPedido.Cancelado &&
+            estadoAnterior != EstadoPedido.Entregado)
+        {
+            foreach (var detalle in pedido.Detalles)
+            {
+                detalle.Producto.Stock += detalle.Cantidad;
+            }
+        }
+
         await _db.SaveChangesAsync();
     }
 

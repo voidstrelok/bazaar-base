@@ -76,7 +76,7 @@ export default function Footer() {
       <div className="max-w-6xl mx-auto border-t border-brand/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-3">
         <p className="text-dark-muted text-sm font-medium">Tu tienda online, lista para crecer.</p>
         <p className="text-dark-muted text-xs">
-          © {year} {STORE_NAME}. Todos los derechos reservados.
+          © {year} {STORE_NAME}.
         </p>
       </div>
     </footer>

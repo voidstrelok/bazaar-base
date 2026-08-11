@@ -125,7 +125,7 @@ export default function CategoriasAdminPage() {
 
   const { data: categorias = [], isLoading, isError } = useQuery({
     queryKey: ['admin-categorias'],
-    queryFn: () => api.get('/api/categorias').then((r) => r.data),
+    queryFn: () => api.get('/api/categorias', { params: { soloActivas: false } }).then((r) => r.data),
   });
 
   const deleteMutation = useMutation({

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Transbank.Common;
 using Transbank.Webpay.WebpayPlus;
 
@@ -63,6 +64,7 @@ public class TransbankGateway : IPaymentGateway
         {
             return new WebhookResult(
                 Aprobado: false,
+                Pendiente: false,
                 PedidoId: string.Empty,
                 ReferenciaPago: string.Empty,
                 DatosRaw: "{}"
@@ -81,12 +83,20 @@ public class TransbankGateway : IPaymentGateway
             commitResponse.Amount,
             commitResponse.ResponseCode,
         });
+        decimal? amount = decimal.TryParse(
+            commitResponse.Amount?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedAmount)
+            ? parsedAmount
+            : null;
 
         return new WebhookResult(
             Aprobado: aprobado,
+            Pendiente: false,
             PedidoId: pedidoId,
             ReferenciaPago: token,
-            DatosRaw: datosRaw
+            DatosRaw: datosRaw,
+            Monto: amount,
+            Moneda: "CLP",
+            Verificado: true
         );
     }
 

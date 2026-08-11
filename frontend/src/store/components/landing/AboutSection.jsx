@@ -6,7 +6,7 @@ export default function AboutSection() {
         <div className="flex flex-col gap-6">
           {/* EDITABLE: about title, description, image */}
           <h2 className="text-3xl md:text-4xl font-extrabold text-dark-text">
-            Nuestra <span className="text-brand">historia</span>
+            Tú <span className="text-brand">historia</span>
           </h2>
           <p className="text-dark-muted text-lg leading-relaxed">
             Cada negocio tiene una historia que merece ser contada. Esta tienda es el espacio para

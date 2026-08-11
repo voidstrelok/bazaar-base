@@ -1,6 +1,6 @@
 #!/bin/bash
 # Uso: ./scripts/migrate.sh {CLIENT_NAME}
-# Ejecuta dotnet ef database update en el contenedor api del cliente
+# Las migraciones se aplican automáticamente al iniciar la API.
 
 CLIENT_NAME=$1
 if [ -z "$CLIENT_NAME" ]; then
@@ -13,6 +13,7 @@ if [ ! -d "clientes/$CLIENT_NAME" ]; then
   exit 1
 fi
 
-echo "Ejecutando migraciones para $CLIENT_NAME..."
-docker compose -p "$CLIENT_NAME" -f "clientes/$CLIENT_NAME/docker-compose.yml" exec api dotnet ef database update
-echo "✅ Migraciones completadas"
+echo "Recreando la API para aplicar migraciones de $CLIENT_NAME..."
+docker compose -p "$CLIENT_NAME" -f "clientes/$CLIENT_NAME/docker-compose.yml" up -d api
+docker compose -p "$CLIENT_NAME" -f "clientes/$CLIENT_NAME/docker-compose.yml" ps api
+echo "✅ La API fue iniciada; revisar healthcheck y logs si hay una migración pendiente."

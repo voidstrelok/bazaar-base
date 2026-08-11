@@ -29,6 +29,21 @@ public class AuthController : ControllerBase
         }
     }
 
+    // POST api/auth/confirm-email — confirmar cuenta con código enviado al registrarse
+    [HttpPost("confirm-email")]
+    public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailRequest request)
+    {
+        try
+        {
+            var response = await _authService.ConfirmEmailAsync(request);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginRequest request)
     {
@@ -92,7 +107,7 @@ public class AuthController : ControllerBase
         if (u is null || !u.Activo)
             return Unauthorized();
 
-        return Ok(new UsuarioDto(u.Id, u.Nombre, u.Email, u.Rol, u.Activo, u.FechaCreacion));
+        return Ok(new UsuarioDto(u.Id, u.Nombre, u.Email, u.Rut, u.Rol, u.EsInvitado, u.Activo, u.FechaCreacion));
     }
 
     // PUT api/auth/me — actualizar perfil propio
@@ -131,6 +146,46 @@ public class AuthController : ControllerBase
         }
 
         await db.SaveChangesAsync();
-        return Ok(new UsuarioDto(u.Id, u.Nombre, u.Email, u.Rol, u.Activo, u.FechaCreacion));
+        return Ok(new UsuarioDto(u.Id, u.Nombre, u.Email, u.Rut, u.Rol, u.EsInvitado, u.Activo, u.FechaCreacion));
+    }
+
+    // POST api/auth/guest — registro express como invitado
+    [HttpPost("guest")]
+    public async Task<IActionResult> Guest([FromBody] GuestRegisterRequest request)
+    {
+        try
+        {
+            var response = await _authService.GuestRegisterAsync(request);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    // POST api/auth/send-code — enviar OTP al email
+    [HttpPost("send-code")]
+    public async Task<IActionResult> SendCode([FromBody] SendOtpRequest request)
+    {
+        var sent = await _authService.SendOtpAsync(request.Email);
+        if (!sent)
+            return Ok(new { status = "not_found" });
+        return Ok(new { status = "sent" });
+    }
+
+    // POST api/auth/verify-code — verificar OTP y obtener tokens
+    [HttpPost("verify-code")]
+    public async Task<IActionResult> VerifyCode([FromBody] VerifyOtpRequest request)
+    {
+        try
+        {
+            var response = await _authService.VerifyOtpAsync(request);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 }

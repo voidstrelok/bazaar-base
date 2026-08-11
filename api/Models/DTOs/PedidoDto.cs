@@ -3,9 +3,7 @@ namespace TiendaApi.Models.DTOs;
 public record ItemCarritoRequest(int ProductoId, int Cantidad);
 
 public record CreatePedidoRequest(
-    IEnumerable<ItemCarritoRequest> Items,
-    string UrlRetorno,
-    string UrlWebhook
+    IEnumerable<ItemCarritoRequest>? Items
 );
 
 public record DetallePedidoDto(

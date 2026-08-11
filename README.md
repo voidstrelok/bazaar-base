@@ -8,7 +8,7 @@ Monorepo base para una tienda virtual replicable por cliente. Cada cliente corre
 |------|-----------|
 | Frontend | React 18 + Vite + Tailwind CSS |
 | Backend | ASP.NET Core Web API (.NET 8) |
-| Base de datos | SQL Server 2022 |
+| Base de datos | PostgreSQL 16 |
 | Reverse proxy | Nginx (en host) |
 | Contenedores | Docker Compose por cliente |
 | SSL | Certbot (en host, fuera de Docker) |
@@ -80,9 +80,9 @@ Copia `.env.example` a `.env` y ajusta los valores:
 | `STORE_NAME` | Nombre de la tienda | `Mi Tienda` |
 | `FRONTEND_PORT` | Puerto expuesto del frontend | `3000` |
 | `API_PORT` | Puerto expuesto de la API | `5000` |
-| `DB_PORT` | Puerto expuesto de SQL Server | `1433` |
+| `PUBLIC_BASE_URL` | URL HTTPS pública del cliente | `https://mitienda.cl` |
 | `DB_NAME` | Nombre de la base de datos | `TiendaDB` |
-| `SA_PASSWORD` | Contraseña SA de SQL Server | `YourStrong@Passw0rd` |
+| `POSTGRES_PASSWORD` | Contraseña del usuario PostgreSQL | `YourStrong@Passw0rd` |
 | `JWT_SECRET` | Clave secreta para firmar JWT | `mi_secreto_seguro` |
 | `JWT_EXPIRY_MINUTES` | Expiración del token (minutos) | `60` |
 | `PAYMENT_GATEWAY` | Pasarela activa: `transbank` o `mercadopago` | `transbank` |
@@ -115,7 +115,7 @@ dotnet run
 # → Swagger UI: http://localhost:5000/swagger
 ```
 
-### Base de datos (solo SQL Server en Docker)
+### Base de datos (PostgreSQL en Docker)
 
 ```bash
 cp .env.example .env
@@ -135,9 +135,9 @@ chmod +x scripts/new-client.sh   # ya incluido en el repo
 
 El script solicita de forma interactiva:
 - Nombre del cliente y dominio
-- Puertos (frontend, API, DB)
-- Contraseña SA, JWT secret
-- Gateway de pago y provider de storage
+- Puertos de frontend y API (la base queda solo en la red Docker)
+- Contraseñas PostgreSQL y JWT, administrador inicial
+- Gateway de pago, webhook secret, storage y email transaccional
 
 Y genera automáticamente:
 - `clientes/<nombre>/.env` con todos los valores
@@ -160,7 +160,8 @@ sudo ln -s /etc/nginx/sites-available/<dominio> /etc/nginx/sites-enabled/<domini
 sudo nginx -t && sudo systemctl reload nginx
 
 # Obtener certificado con Certbot
-certbot --nginx -d <dominio>
+sudo certbot --nginx -d <dominio>
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
 ---
@@ -181,12 +182,12 @@ VPS Host
   ├── Stack cliente1 (docker compose -p cliente1)
   │     ├── frontend  :3001
   │     ├── api       :5001
-  │     └── db        :1434
+  │     └── db        (red interna)
   │
   └── Stack cliente2 (docker compose -p cliente2)
         ├── frontend  :3002
         ├── api       :5002
-        └── db        :1435
+        └── db        (red interna)
 ```
 
 > ⚠️ Con 4 CPUs / 8 GB RAM se soportan cómodamente 3-4 clientes simultáneos.
@@ -200,8 +201,8 @@ VPS Host
 ```bash
 cd api
 cp appsettings.example.json appsettings.Development.json
-# Asegúrate de tener SQL Server disponible y editar la cadena de conexión
-dotnet ef database update
+# La API aplica las migraciones al iniciar el contenedor
+docker compose up -d db api
 ```
 
 ### Endpoints de autenticación
@@ -268,17 +269,17 @@ Para proteger endpoints con rol admin usa el atributo:
 |------|-------------|--------|
 | **Fase 1** | Base, estructura, Docker Compose | ✅ Completada |
 | **Fase 2** | Modelo de BD, EF Core, Auth JWT + roles | ✅ Completada |
-| **Fase 3** | Tienda pública, carrito, checkout UI | ⏳ Pendiente |
-| **Fase 4** | Pasarela de pagos (Transbank + MercadoPago) | ⏳ Pendiente |
-| **Fase 5** | Deploy, replicabilidad, script new-client.sh | ✅ Incluido en Fase 1 |
+| **Fase 3** | Tienda pública, carrito, checkout UI | ✅ Implementada |
+| **Fase 4** | Pasarela de pagos y webhooks verificados | 🔄 En validación con credenciales reales |
+| **Fase 5** | Deploy, replicabilidad, script new-client.sh | 🔄 En validación en VPS limpio |
 
 ---
 
 ## Notas SSL con Certbot
 
 - Certbot corre en el **host**, no en Docker
-- El `nginx.conf` generado por `new-client.sh` ya incluye los bloques HTTP (redirect) y HTTPS (SSL)
-- Certbot modifica automáticamente el archivo al ejecutar `certbot --nginx -d <dominio>`
+- El `nginx.conf` generado por `new-client.sh` es una configuración HTTP de bootstrap
+- Después de instalarla, ejecuta `certbot --nginx -d <dominio>` para añadir HTTPS y el redirect
 - Los certificados se renuevan automáticamente con `certbot renew` (configurar en cron o systemd timer)
 
 ```bash

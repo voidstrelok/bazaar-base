@@ -31,6 +31,8 @@ public class ProductosController : ControllerBase
         [FromQuery] string? busqueda = null,
         [FromQuery] bool soloActivos = true)
     {
+        pagina = Math.Max(1, pagina);
+        tamano = Math.Clamp(tamano, 1, 100);
         var query = _db.Productos.Include(p => p.Categoria).AsQueryable();
 
         if (soloActivos)
@@ -86,6 +88,8 @@ public class ProductosController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Nombre))
             return BadRequest(new { message = "El nombre es requerido." });
+        if (request.Precio < 0 || request.Stock < 0)
+            return BadRequest(new { message = "El precio y el stock no pueden ser negativos." });
 
         if (!await _db.Categorias.AnyAsync(c => c.Id == request.CategoriaId))
             return BadRequest(new { message = "La categoría no existe." });
@@ -96,8 +100,17 @@ public class ProductosController : ControllerBase
             return Conflict(new { message = "Ya existe un producto con ese nombre." });
 
         string? imagenUrl = null;
-        if (imagen is not null)
-            imagenUrl = await _storage.UploadAsync(imagen, "productos");
+        try
+        {
+            if (imagen is not null)
+                await ImageValidation.ValidateAsync(imagen);
+            if (imagen is not null)
+                imagenUrl = await _storage.UploadAsync(imagen, "productos");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
 
         var producto = new Producto
         {
@@ -132,6 +145,8 @@ public class ProductosController : ControllerBase
 
         if (string.IsNullOrWhiteSpace(request.Nombre))
             return BadRequest(new { message = "El nombre es requerido." });
+        if (request.Precio < 0 || request.Stock < 0)
+            return BadRequest(new { message = "El precio y el stock no pueden ser negativos." });
 
         if (!await _db.Categorias.AnyAsync(c => c.Id == request.CategoriaId))
             return BadRequest(new { message = "La categoría no existe." });
@@ -141,12 +156,21 @@ public class ProductosController : ControllerBase
         if (await _db.Productos.AnyAsync(p => p.Slug == slug && p.Id != id))
             return Conflict(new { message = "Ya existe un producto con ese nombre." });
 
-        if (imagen is not null)
+        try
         {
-            if (!string.IsNullOrWhiteSpace(producto.ImagenUrl))
-                await _storage.DeleteAsync(producto.ImagenUrl);
+            if (imagen is not null)
+                await ImageValidation.ValidateAsync(imagen);
+            if (imagen is not null)
+            {
+                if (!string.IsNullOrWhiteSpace(producto.ImagenUrl))
+                    await _storage.DeleteAsync(producto.ImagenUrl);
 
-            producto.ImagenUrl = await _storage.UploadAsync(imagen, "productos");
+                producto.ImagenUrl = await _storage.UploadAsync(imagen, "productos");
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
 
         producto.Nombre = request.Nombre;

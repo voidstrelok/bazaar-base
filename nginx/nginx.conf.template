@@ -1,33 +1,18 @@
 # Nginx configuration template for host-level reverse proxy
-# Usage: envsubst '${DOMAIN} ${FRONTEND_PORT} ${API_PORT}' < nginx.conf.template > /etc/nginx/sites-available/${DOMAIN}
+# Usage: envsubst '${DOMAIN} ${FRONTEND_PORT} ${API_PORT} ${RATE_LIMIT_ZONE}' < nginx.conf.template > /etc/nginx/sites-available/${DOMAIN}
 #
-# Obtain SSL certificate first:
+# This is an HTTP bootstrap configuration. After installing it, run:
 #   certbot --nginx -d ${DOMAIN}
+# Certbot will add the HTTPS server and redirect.
 
 # Rate limiting zone for auth endpoints
-limit_req_zone $binary_remote_addr zone=auth_limit:10m rate=10r/m;
+limit_req_zone $binary_remote_addr zone=${RATE_LIMIT_ZONE}:10m rate=10r/m;
 
-# Redirect HTTP to HTTPS
+# HTTP bootstrap. Keep this server active while Certbot obtains the certificate.
 server {
     listen 80;
     server_name ${DOMAIN};
 
-    location / {
-        return 301 https://$host$request_uri;
-    }
-}
-
-# HTTPS server
-server {
-    listen 443 ssl;
-    server_name ${DOMAIN};
-
-    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
-    ssl_protocols       TLSv1.2 TLSv1.3;
-    ssl_ciphers         HIGH:!aNULL:!MD5;
-
-    # Gzip compression
     gzip on;
     gzip_types text/plain text/css application/javascript application/json image/svg+xml font/woff2;
     gzip_min_length 1024;
@@ -40,11 +25,9 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-XSS-Protection "1; mode=block" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-
     # Rate limiting for auth endpoints
     location /api/auth/ {
-        limit_req zone=auth_limit burst=5 nodelay;
+        limit_req zone=${RATE_LIMIT_ZONE} burst=5 nodelay;
         proxy_pass http://localhost:${API_PORT};
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;

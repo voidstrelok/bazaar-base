@@ -53,19 +53,21 @@ export default function Navbar() {
               <button className="text-sm text-dark-text hover:text-brand font-medium flex items-center gap-1 transition-colors">
                 👤 {user?.nombre?.split(' ')[0]}
               </button>
-              <div className="absolute right-0 top-full mt-1 bg-dark-surface-2 border border-brand/20 rounded-xl shadow-lg py-1 w-44 hidden group-hover:block z-20">
-                <Link
-                  to="/mi-cuenta"
-                  className="block px-4 py-2 text-sm text-dark-text hover:text-brand hover:bg-dark-surface transition-colors"
-                >
-                  Mi cuenta
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-dark-surface transition-colors"
-                >
-                  Cerrar sesión
-                </button>
+              <div className="absolute right-0 top-full pt-1 hidden group-hover:block z-20 w-44">
+                <div className="bg-dark-surface-2 border border-brand/20 rounded-xl shadow-lg py-1">
+                  <Link
+                    to="/mi-cuenta"
+                    className="block px-4 py-2 text-sm text-dark-text hover:text-brand hover:bg-dark-surface transition-colors"
+                  >
+                    Mi cuenta
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-dark-surface transition-colors"
+                  >
+                    Cerrar sesión
+                  </button>
+                </div>
               </div>
             </div>
           ) : (

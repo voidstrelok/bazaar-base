@@ -13,15 +13,29 @@ using TiendaApi.Services.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var jwtSecret = builder.Configuration["Jwt:Secret"];
+if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret.Length < 32)
+    throw new InvalidOperationException("Jwt:Secret debe existir y tener al menos 32 caracteres.");
+
+var paymentGateway = (builder.Configuration["Payment:Gateway"] ?? "transbank").ToLowerInvariant();
+if (paymentGateway is not ("transbank" or "mercadopago"))
+    throw new InvalidOperationException("Payment:Gateway debe ser transbank o mercadopago.");
+
+if (builder.Environment.IsProduction() && builder.Configuration.GetValue("Features:EnableCheckout", true))
+{
+    var publicBaseUrl = builder.Configuration["PublicBaseUrl"];
+    if (!Uri.TryCreate(publicBaseUrl, UriKind.Absolute, out var publicUri) || publicUri.Scheme != Uri.UriSchemeHttps)
+        throw new InvalidOperationException("PublicBaseUrl debe ser una URL HTTPS válida en producción.");
+
+    if (paymentGateway == "mercadopago" && string.IsNullOrWhiteSpace(builder.Configuration["MercadoPago:WebhookSecret"]))
+        throw new InvalidOperationException("MercadoPago:WebhookSecret es obligatorio en producción.");
+}
+
 // ── DbContext ────────────────────────────────────────────────────────────────
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(
+    options.UseNpgsql(
         builder.Configuration.GetConnectionString("Default"),
-        sqlOptions => sqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 5,
-            maxRetryDelay: TimeSpan.FromSeconds(10),
-            errorNumbersToAdd: null
-        )
+        o => o.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(10), errorCodesToAdd: null)
     ));
 
 // ── JWT Authentication ───────────────────────────────────────────────────────
@@ -48,12 +62,17 @@ builder.Services.AddRolePolicies();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
+// ── Email (Resend via HTTP) ──────────────────────────────────────────────────
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<IEmailService, EmailService>();
+
 // ── Storage service (según config) ───────────────────────────────────────────
 builder.Services.AddStorageService(builder.Configuration);
 
 // ── Payment gateway (según config) ────────────────────────────────────────────
 builder.Services.AddPaymentGateway(builder.Configuration);
 builder.Services.AddScoped<IPedidoService, PedidoService>();
+builder.Services.AddHostedService<PedidoExpirationService>();
 
 // ── Subida de archivos grandes ───────────────────────────────────────────────
 builder.Services.Configure<FormOptions>(options =>
@@ -61,10 +80,10 @@ builder.Services.Configure<FormOptions>(options =>
     options.MultipartBodyLengthLimit = 10 * 1024 * 1024; // 10 MB
 });
 
-// ── CORS (configurable vía CORS__Origins) ───────────────────────────────────
-var corsOrigins = builder.Configuration["CORS__Origins"]
+// ── CORS (configurable vía CORS:Origins / CORS__Origins) ────────────────────
+var corsOrigins = builder.Configuration["CORS:Origins"]
     ?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-    ?? new[] { "http://localhost:3000" };
+    ?? new[] { "http://localhost:5173" };
 
 builder.Services.AddCors(options =>
 {
@@ -76,6 +95,7 @@ builder.Services.AddCors(options =>
 
 // ── Controllers + Swagger ────────────────────────────────────────────────────
 builder.Services.AddControllers();
+builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -107,6 +127,9 @@ builder.Services.AddSwaggerGen(c =>
 
 // ── Build ────────────────────────────────────────────────────────────────────
 var app = builder.Build();
+
+if (app.Environment.IsProduction())
+    app.UseExceptionHandler();
 
 
 // Migraciones

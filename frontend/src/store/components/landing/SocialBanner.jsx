@@ -8,7 +8,7 @@ export default function SocialBanner() {
       {/* EDITABLE: social text, add/remove networks */}
       <div className="max-w-4xl mx-auto text-center flex flex-col items-center gap-6">
         <p className="text-black font-bold text-xl md:text-2xl leading-snug max-w-2xl">
-          Seguinos en redes y enterate de todas las novedades, promociones y lanzamientos.
+          Promociona tu redes para mostrar todas tus novedades, promociones y lanzamientos.
         </p>
 
         {hasSocial && (

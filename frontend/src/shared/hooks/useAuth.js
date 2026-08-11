@@ -1,6 +1,14 @@
 import { create } from 'zustand';
 import api from '../utils/api';
 
+const persistUser = (data) => {
+  const user = { nombre: data.nombre, email: data.email, rol: data.rol, esInvitado: data.esInvitado ?? false };
+  localStorage.setItem('accessToken', data.accessToken);
+  localStorage.setItem('refreshToken', data.refreshToken);
+  localStorage.setItem('user', JSON.stringify(user));
+  return user;
+};
+
 const useAuth = create((set, get) => ({
   user: (() => {
     try {
@@ -15,12 +23,35 @@ const useAuth = create((set, get) => ({
 
   login: async (email, password) => {
     const { data } = await api.post('/api/auth/login', { email, password });
-    const user = { nombre: data.nombre, email: data.email, rol: data.rol };
+    const user = persistUser(data);
+    set({ user, accessToken: data.accessToken, isAuthenticated: true });
+  },
 
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
-    localStorage.setItem('user', JSON.stringify(user));
+  guestLogin: async (nombre, rut, email) => {
+    const { data } = await api.post('/api/auth/guest', { nombre, rut, email });
+    const user = persistUser(data);
+    set({ user, accessToken: data.accessToken, isAuthenticated: true });
+  },
 
+  sendOtp: async (email) => {
+    const { data } = await api.post('/api/auth/send-code', { email });
+    return data; // { status: "sent" | "not_found" }
+  },
+
+  registerForOtp: async (nombre, rut, email) => {
+    await api.post('/api/auth/guest', { nombre, rut, email });
+    // Crea la cuenta sin iniciar sesión; el OTP se envía a continuación
+  },
+
+  verifyOtp: async (email, code) => {
+    const { data } = await api.post('/api/auth/verify-code', { email, code });
+    const user = persistUser(data);
+    set({ user, accessToken: data.accessToken, isAuthenticated: true });
+  },
+
+  confirmRegistration: async (email, code) => {
+    const { data } = await api.post('/api/auth/confirm-email', { email, code });
+    const user = persistUser(data);
     set({ user, accessToken: data.accessToken, isAuthenticated: true });
   },
 

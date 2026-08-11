@@ -24,10 +24,14 @@ public class CategoriasController : ControllerBase
 
     // GET api/categorias
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll([FromQuery] bool soloActivas = true)
     {
-        var categorias = await _db.Categorias
-            .Where(c => c.Activo)
+        var incluirInactivas = !soloActivas && User.IsInRole("ADMIN");
+        var query = _db.Categorias.AsQueryable();
+        if (!incluirInactivas)
+            query = query.Where(c => c.Activo);
+
+        var categorias = await query
             .OrderBy(c => c.Nombre)
             .Select(c => new CategoriaDto(c.Id, c.Nombre, c.Slug, c.Descripcion, c.ImagenUrl, c.Activo))
             .ToListAsync();
@@ -60,8 +64,17 @@ public class CategoriasController : ControllerBase
             return Conflict(new { message = "Ya existe una categoría con ese nombre." });
 
         string? imagenUrl = null;
-        if (imagen is not null)
-            imagenUrl = await _storage.UploadAsync(imagen, "categorias");
+        try
+        {
+            if (imagen is not null)
+                await ImageValidation.ValidateAsync(imagen);
+            if (imagen is not null)
+                imagenUrl = await _storage.UploadAsync(imagen, "categorias");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
 
         var categoria = new Categoria
         {
@@ -96,12 +109,21 @@ public class CategoriasController : ControllerBase
         if (await _db.Categorias.AnyAsync(c => c.Slug == slug && c.Id != id))
             return Conflict(new { message = "Ya existe una categoría con ese nombre." });
 
-        if (imagen is not null)
+        try
         {
-            if (!string.IsNullOrWhiteSpace(categoria.ImagenUrl))
-                await _storage.DeleteAsync(categoria.ImagenUrl);
+            if (imagen is not null)
+                await ImageValidation.ValidateAsync(imagen);
+            if (imagen is not null)
+            {
+                if (!string.IsNullOrWhiteSpace(categoria.ImagenUrl))
+                    await _storage.DeleteAsync(categoria.ImagenUrl);
 
-            categoria.ImagenUrl = await _storage.UploadAsync(imagen, "categorias");
+                categoria.ImagenUrl = await _storage.UploadAsync(imagen, "categorias");
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
 
         categoria.Nombre = request.Nombre;

@@ -4,7 +4,9 @@ public record UsuarioDto(
     int Id,
     string Nombre,
     string Email,
+    string? Rut,
     string Rol,
+    bool EsInvitado,
     bool Activo,
     DateTime FechaCreacion
 );

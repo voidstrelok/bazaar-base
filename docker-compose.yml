@@ -3,14 +3,27 @@ services:
     build:
       context: ./frontend
       args:
+        # Same-origin by default: the host Nginx proxies /api to the API.
+        # Set VITE_API_URL only when the API is intentionally deployed elsewhere.
+        - VITE_API_URL=${VITE_API_URL:-}
+        - VITE_STORE_NAME=${STORE_NAME:-Bazaar}
+        - VITE_STORE_DESCRIPTION=${STORE_DESCRIPTION:-}
+        - VITE_STORE_INSTAGRAM=${STORE_INSTAGRAM:-}
+        - VITE_STORE_FACEBOOK=${STORE_FACEBOOK:-}
+        - VITE_STORE_TWITTER=${STORE_TWITTER:-}
+        - VITE_STORE_WHATSAPP=${STORE_WHATSAPP:-}
+        - VITE_COLOR_PRIMARY=${COLOR_PRIMARY:-#6366f1}
+        - VITE_COLOR_SECONDARY=${COLOR_SECONDARY:-#f59e0b}
+        - VITE_PAYMENT_GATEWAY=${PAYMENT_GATEWAY:-transbank}
         - VITE_ENABLE_CHECKOUT=${ENABLE_CHECKOUT:-true}
         - VITE_CONTACT_TYPE=${CONTACT_TYPE:-none}
         - VITE_CONTACT_VALUE=${CONTACT_VALUE:-}
         - VITE_CONTACT_MESSAGE=${CONTACT_MESSAGE:-}
     ports:
-      - "${FRONTEND_PORT}:80"
+      - "127.0.0.1:${FRONTEND_PORT:?FRONTEND_PORT must be set}:80"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - tienda_network
@@ -22,28 +35,39 @@ services:
   api:
     build: ./api
     ports:
-      - "${API_PORT}:8080"
+      - "127.0.0.1:${API_PORT:?API_PORT must be set}:8080"
     depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__Default=Server=db,1433;Database=${DB_NAME};User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True
-      - Jwt__Secret=${JWT_SECRET}
+      - ConnectionStrings__Default=Host=db;Port=5432;Database=${DB_NAME:?DB_NAME must be set};Username=postgres;Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      - Jwt__Secret=${JWT_SECRET:?JWT_SECRET must be set}
       - Jwt__Issuer=${JWT_ISSUER:-TiendaApi}
       - Jwt__Audience=${JWT_AUDIENCE:-TiendaApiUsers}
       - Jwt__ExpiryMinutes=${JWT_EXPIRY_MINUTES:-60}
       - Payment__Gateway=${PAYMENT_GATEWAY:-transbank}
+      - Transbank__CommerceCode=${TRANSBANK_COMMERCE_CODE:-}
+      - Transbank__ApiKey=${TRANSBANK_API_KEY:-}
+      - Transbank__Environment=${TRANSBANK_ENVIRONMENT:-Integration}
+      - MercadoPago__AccessToken=${MERCADOPAGO_ACCESS_TOKEN:-}
+      - MercadoPago__WebhookSecret=${MERCADOPAGO_WEBHOOK_SECRET:-}
       - Storage__Provider=${STORAGE_PROVIDER:-local}
       - Storage__LocalPath=${LOCAL_STORAGE_PATH:-/app/uploads}
       - Cloudinary__Url=${CLOUDINARY_URL:-}
-      - STORE_NAME=${STORE_NAME}
-      - CORS__Origins=${CORS_ORIGINS:-http://localhost:3000}
-      - Admin__Email=${ADMIN_EMAIL:-admin@tienda.com}
-      - Admin__Password=${ADMIN_PASSWORD:-Admin@123456}
+      - STORE_NAME=${STORE_NAME:-Bazaar}
+      - CORS__Origins=${CORS_ORIGINS:-http://localhost:5173}
+      - Admin__Email=${ADMIN_EMAIL:?ADMIN_EMAIL must be set}
+      - Admin__Password=${ADMIN_PASSWORD:?ADMIN_PASSWORD must be set}
       - Admin__Nombre=${ADMIN_NOMBRE:-Administrador}
       - Features__EnableCheckout=${ENABLE_CHECKOUT:-true}
+      - SeedDemoData=${SEED_DEMO_DATA:-false}
+      - Frontend__BaseUrl=${PUBLIC_BASE_URL:-}
+      - PublicBaseUrl=${PUBLIC_BASE_URL:-}
+      - Resend__ApiKey=${RESEND_API_KEY:-}
+      - Resend__FromEmail=${RESEND_FROM_EMAIL:-}
+      - Resend__FromName=${STORE_NAME:-Bazaar}
     volumes:
       - uploads_data:/app/uploads
     healthcheck:
@@ -60,21 +84,20 @@ services:
     #       memory: 512M
 
   db:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    ports:
-      - "${DB_PORT}:1433"
+    image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      - ACCEPT_EULA=Y
-      - SA_PASSWORD=${SA_PASSWORD}
+      - POSTGRES_DB=${DB_NAME:?DB_NAME must be set}
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
     volumes:
-      - sqlserver_data:/var/opt/mssql
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $$SA_PASSWORD -Q 'SELECT 1' -No || exit 1"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${DB_NAME:?DB_NAME must be set}"]
       interval: 30s
       timeout: 10s
       retries: 10
-      start_period: 60s
+      start_period: 30s
     networks:
       - tienda_network
     # deploy:
@@ -87,5 +110,5 @@ networks:
     driver: bridge
 
 volumes:
-  sqlserver_data:
+  postgres_data:
   uploads_data:

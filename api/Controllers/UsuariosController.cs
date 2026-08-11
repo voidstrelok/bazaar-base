@@ -24,6 +24,8 @@ public class UsuariosController : ControllerBase
         [FromQuery] int tamano = 20,
         [FromQuery] string? busqueda = null)
     {
+        pagina = Math.Max(1, pagina);
+        tamano = Math.Clamp(tamano, 1, 100);
         var query = _db.Usuarios.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(busqueda))
@@ -37,7 +39,7 @@ public class UsuariosController : ControllerBase
             .OrderByDescending(u => u.FechaCreacion)
             .Skip((pagina - 1) * tamano)
             .Take(tamano)
-            .Select(u => new UsuarioDto(u.Id, u.Nombre, u.Email, u.Rol, u.Activo, u.FechaCreacion))
+            .Select(u => new UsuarioDto(u.Id, u.Nombre, u.Email, u.Rut, u.Rol, u.EsInvitado, u.Activo, u.FechaCreacion))
             .ToListAsync();
 
         return Ok(new { total, pagina, tamanoPagina = tamano, items = usuarios });
@@ -49,7 +51,7 @@ public class UsuariosController : ControllerBase
     {
         var u = await _db.Usuarios.FindAsync(id);
         if (u is null) return NotFound();
-        return Ok(new UsuarioDto(u.Id, u.Nombre, u.Email, u.Rol, u.Activo, u.FechaCreacion));
+        return Ok(new UsuarioDto(u.Id, u.Nombre, u.Email, u.Rut, u.Rol, u.EsInvitado, u.Activo, u.FechaCreacion));
     }
 
     // PUT api/usuarios/{id}
@@ -71,9 +73,14 @@ public class UsuariosController : ControllerBase
         u.Nombre = request.Nombre ?? u.Nombre;
         u.Rol = request.Rol ?? u.Rol;
         u.Activo = request.Activo ?? u.Activo;
+        if (!u.Activo)
+        {
+            u.RefreshToken = null;
+            u.RefreshTokenExpiry = null;
+        }
 
         await _db.SaveChangesAsync();
-        return Ok(new UsuarioDto(u.Id, u.Nombre, u.Email, u.Rol, u.Activo, u.FechaCreacion));
+        return Ok(new UsuarioDto(u.Id, u.Nombre, u.Email, u.Rut, u.Rol, u.EsInvitado, u.Activo, u.FechaCreacion));
     }
 
     // DELETE api/usuarios/{id}
@@ -87,7 +94,10 @@ public class UsuariosController : ControllerBase
         var u = await _db.Usuarios.FindAsync(id);
         if (u is null) return NotFound();
 
-        _db.Usuarios.Remove(u);
+        // Mantener la integridad histórica de los pedidos: desactivar en vez de borrar.
+        u.Activo = false;
+        u.RefreshToken = null;
+        u.RefreshTokenExpiry = null;
         await _db.SaveChangesAsync();
         return NoContent();
     }

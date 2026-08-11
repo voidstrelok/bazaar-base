@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, Link } from 'react-router-dom';
 import useAuth from '../../shared/hooks/useAuth';
 import useCart from '../../shared/hooks/useCart';
 import api from '../../shared/utils/api';
+import GuestCheckoutForm from '../components/GuestCheckoutForm';
 
 const GATEWAY = import.meta.env.VITE_PAYMENT_GATEWAY || 'transbank';
 
@@ -17,9 +18,55 @@ export default function CheckoutPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [authMode, setAuthMode] = useState(null); // null | 'login' | 'register' | 'guest'
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login?redirect=/checkout" replace />;
+  if (!isAuthenticated && authMode === null) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8 space-y-4">
+          <h2 className="text-xl font-bold text-gray-800 text-center">¿Cómo deseas continuar?</h2>
+          <p className="text-sm text-gray-500 text-center">Para completar tu compra elige una opción</p>
+
+          <Link
+            to={`/login?redirect=/checkout`}
+            className="block w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-medium text-sm transition-colors"
+          >
+            Iniciar sesión
+          </Link>
+
+          <Link
+            to={`/registro?redirect=/checkout`}
+            className="block w-full text-center border border-indigo-600 text-indigo-600 hover:bg-indigo-50 py-2.5 rounded-xl font-medium text-sm transition-colors"
+          >
+            Crear cuenta
+          </Link>
+
+          <div className="relative flex items-center gap-3">
+            <div className="flex-1 border-t border-gray-200" />
+            <span className="text-xs text-gray-400">o</span>
+            <div className="flex-1 border-t border-gray-200" />
+          </div>
+
+          <button
+            onClick={() => setAuthMode('guest')}
+            className="w-full text-sm text-gray-600 hover:text-gray-900 border border-gray-300 hover:border-gray-400 py-2.5 rounded-xl transition-colors"
+          >
+            Continuar como invitado
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated && authMode === 'guest') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8">
+          <h2 className="text-xl font-bold text-gray-800 text-center mb-6">Continuar como invitado</h2>
+          <GuestCheckoutForm onCancel={() => setAuthMode(null)} />
+        </div>
+      </div>
+    );
   }
 
   if (items.length === 0) {
@@ -40,13 +87,8 @@ export default function CheckoutPage() {
     setLoading(true);
     setError('');
     try {
-      const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const frontendBase = window.location.origin;
-
       const payload = {
         items: items.map((i) => ({ productoId: i.productoId, cantidad: i.cantidad })),
-        urlRetorno: `${frontendBase}/pago/resultado`,
-        urlWebhook: `${apiBase}/api/payments`,
       };
 
       const { data } = await api.post('/api/pedidos', payload);

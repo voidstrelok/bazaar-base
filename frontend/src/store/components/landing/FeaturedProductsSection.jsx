@@ -17,7 +17,7 @@ export default function FeaturedProductsSection() {
     <section className="bg-dark-bg py-20 px-4">
       <div className="max-w-7xl mx-auto">
         <h2 className="text-3xl md:text-4xl font-extrabold text-dark-text text-center mb-12">
-          Lo que <span className="text-brand">ofrecemos</span>
+          <span className="text-brand">Promociona</span> tu catálogo
         </h2>
 
         {isLoading && (

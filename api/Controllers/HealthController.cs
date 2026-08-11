@@ -9,7 +9,12 @@ namespace TiendaApi.Controllers;
 public class HealthController : ControllerBase
 {
     private readonly AppDbContext _db;
-    public HealthController(AppDbContext db) => _db = db;
+    private readonly ILogger<HealthController> _logger;
+    public HealthController(AppDbContext db, ILogger<HealthController> logger)
+    {
+        _db = db;
+        _logger = logger;
+    }
 
     [HttpGet]
     public async Task<IActionResult> Get()
@@ -23,7 +28,8 @@ public class HealthController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(503, new { status = "unhealthy", error = ex.Message });
+            _logger.LogError(ex, "Healthcheck de base de datos falló.");
+            return StatusCode(503, new { status = "unhealthy" });
         }
     }
 }

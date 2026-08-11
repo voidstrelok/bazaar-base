@@ -18,10 +18,11 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       - name: Restore
-        run: dotnet restore api/TiendaApi.csproj
+        run: dotnet restore bazaar-base.sln
       - name: Build
-        run: dotnet build api/TiendaApi.csproj --no-restore --configuration Release
-      # Tests omitidos en esta fase (no hay proyecto de tests aún)
+        run: dotnet build bazaar-base.sln --no-restore --configuration Release
+      - name: Test
+        run: dotnet test api.Tests/TiendaApi.Tests.csproj --no-build --configuration Release
 
   build-frontend:
     name: Build Frontend

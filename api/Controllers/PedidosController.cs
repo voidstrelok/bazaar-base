@@ -72,6 +72,8 @@ public class PedidosController : ControllerBase
     [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> GetAll([FromQuery] int pagina = 1, [FromQuery] int tamano = 20)
     {
+        pagina = Math.Max(1, pagina);
+        tamano = Math.Clamp(tamano, 1, 100);
         var pedidos = await _pedidoService.GetAllPedidosAsync(pagina, tamano);
         return Ok(pedidos);
     }

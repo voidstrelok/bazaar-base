@@ -11,6 +11,8 @@ const useCart = create(
         set((state) => {
           const existing = state.items.find((i) => i.productoId === producto.id);
           if (existing) {
+            // No incrementar más allá del stock disponible
+            if (existing.cantidad >= producto.stock) return state;
             return {
               items: state.items.map((i) =>
                 i.productoId === producto.id
@@ -19,6 +21,7 @@ const useCart = create(
               ),
             };
           }
+          if (producto.stock <= 0) return state;
           return {
             items: [
               ...state.items,
@@ -27,6 +30,7 @@ const useCart = create(
                 nombre: producto.nombre,
                 precio: producto.precio,
                 imagenUrl: producto.imagenUrl,
+                stock: producto.stock,
                 cantidad: 1,
               },
             ],
@@ -45,9 +49,12 @@ const useCart = create(
           return;
         }
         set((state) => ({
-          items: state.items.map((i) =>
-            i.productoId === productoId ? { ...i, cantidad } : i
-          ),
+          items: state.items.map((i) => {
+            if (i.productoId !== productoId) return i;
+            // Capear al stock disponible guardado en el ítem
+            const cantidadFinal = i.stock != null ? Math.min(cantidad, i.stock) : cantidad;
+            return { ...i, cantidad: cantidadFinal };
+          }),
         }));
       },
 

@@ -86,14 +86,5 @@ public class AppDbContext : DbContext
              .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Seed: categoría general por defecto
-        modelBuilder.Entity<Categoria>().HasData(new Categoria
-        {
-            Id = 1,
-            Nombre = "General",
-            Slug = "general",
-            Descripcion = "Categoría general",
-            Activo = true
-        });
     }
 }

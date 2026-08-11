@@ -1,10 +1,13 @@
-using MercadoPago;
+using System.Net.Http.Headers;
+using System.Text.Json;
+using TiendaApi.Helpers;
 
 namespace TiendaApi.Services.Payments;
 
 public class MercadoPagoGateway : IPaymentGateway
 {
     private readonly IConfiguration _config;
+    private static readonly HttpClient _httpClient = new();
 
     public MercadoPagoGateway(IConfiguration config)
     {
@@ -20,34 +23,54 @@ public class MercadoPagoGateway : IPaymentGateway
             var accessToken = _config["MercadoPago:AccessToken"]
                 ?? throw new InvalidOperationException("MercadoPago:AccessToken no configurado.");
 
-            var preference = new CheckoutPreference
+            var payload = new
             {
                 external_reference = request.PedidoId.ToString(),
-                back_urls = new CheckoutPreferenceBackUrl
+                notification_url = request.UrlWebhook.TrimEnd('/') + "/webhook",
+                items = new[]
                 {
-                    success = request.UrlRetorno + (request.UrlRetorno.Contains('?') ? "&" : "?") + "estado=aprobado",
-                    failure = request.UrlRetorno + (request.UrlRetorno.Contains('?') ? "&" : "?") + "estado=rechazado",
-                    pending = request.UrlRetorno + (request.UrlRetorno.Contains('?') ? "&" : "?") + "estado=pendiente",
+                    new
+                    {
+                        title = request.Descripcion,
+                        quantity = 1,
+                        unit_price = request.Monto,
+                        currency_id = "CLP"
+                    }
                 },
+                back_urls = new
+                {
+                    success = request.UrlRetorno,
+                    failure = request.UrlRetorno,
+                    pending = request.UrlRetorno
+                }
             };
 
-            preference.AddItem(new CheckoutPreferenceItem
-            {
-                title = request.Descripcion,
-                quantity = 1,
-                unit_price = request.Monto,
-                currency_id = "CLP",
-            });
+            using var req = new HttpRequestMessage(HttpMethod.Post,
+                "https://api.mercadopago.com/checkout/preferences");
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            req.Content = JsonContent.Create(payload);
 
-            var service = new CheckoutService();
-            var result = await Task.Run(() =>
-                service.create_checkout_preference(preference, accessToken));
+            var response = await _httpClient.SendAsync(req);
+            var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errMsg = json.TryGetProperty("message", out var msgEl)
+                    ? msgEl.GetString() : response.ReasonPhrase;
+                return new PaymentResponse(
+                    Success: false,
+                    RedirectUrl: null,
+                    Token: null,
+                    PaymentId: null,
+                    ErrorMessage: errMsg
+                );
+            }
 
             return new PaymentResponse(
                 Success: true,
-                RedirectUrl: result.init_point,
+                RedirectUrl: json.GetProperty("init_point").GetString(),
                 Token: null,
-                PaymentId: result.id,
+                PaymentId: json.GetProperty("id").GetString(),
                 ErrorMessage: null
             );
         }
@@ -68,48 +91,92 @@ public class MercadoPagoGateway : IPaymentGateway
         try
         {
             string body = string.Empty;
-            if (request.ContentLength > 0)
+            string eventType = request.Query["type"].ToString();
+            string paymentId = request.Query["data.id"].ToString();
+
+            if (request.Method == HttpMethods.Post && request.ContentLength > 0)
             {
                 using var reader = new StreamReader(request.Body);
                 body = await reader.ReadToEndAsync();
+                using var doc = JsonDocument.Parse(body);
+                if (string.IsNullOrWhiteSpace(eventType) && doc.RootElement.TryGetProperty("type", out var typeElement))
+                    eventType = typeElement.GetString() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(paymentId) &&
+                    doc.RootElement.TryGetProperty("data", out var dataElement) &&
+                    dataElement.TryGetProperty("id", out var idElement))
+                    paymentId = idElement.GetString() ?? string.Empty;
             }
 
-            var type = request.Query["type"].ToString();
-            var dataId = request.Query["data.id"].ToString();
-            var externalRef = request.Query["external_reference"].ToString();
-
-            if (string.IsNullOrEmpty(dataId) && !string.IsNullOrEmpty(body))
+            // Browser redirects are not trusted. We use only the payment_id and
+            // verify it server-to-server against Mercado Pago.
+            if (request.Method == HttpMethods.Get)
             {
-                try
-                {
-                    using var doc = System.Text.Json.JsonDocument.Parse(body);
-                    if (doc.RootElement.TryGetProperty("data", out var dataEl)
-                        && dataEl.TryGetProperty("id", out var idEl))
-                        dataId = idEl.GetString() ?? string.Empty;
-                    if (string.IsNullOrEmpty(externalRef)
-                        && doc.RootElement.TryGetProperty("external_reference", out var extEl))
-                        externalRef = extEl.GetString() ?? string.Empty;
-                }
-                catch { }
+                paymentId = request.Query["payment_id"].ToString();
+                return await GetPaymentResultAsync(paymentId);
             }
 
-            var aprobado = type == "payment" && !string.IsNullOrEmpty(dataId);
+            if (!string.Equals(eventType, "payment", StringComparison.OrdinalIgnoreCase))
+                return new WebhookResult(false, false, string.Empty, paymentId, body, Verificado: true);
 
-            return new WebhookResult(
-                Aprobado: aprobado,
-                PedidoId: externalRef,
-                ReferenciaPago: dataId,
-                DatosRaw: string.IsNullOrEmpty(body) ? "{}" : body
-            );
+            if (!WebhookSignatureValidator.Validate(
+                    request.Headers["x-signature"].ToString(),
+                    request.Headers["x-request-id"].ToString(),
+                    paymentId,
+                    _config["MercadoPago:WebhookSecret"]))
+                return InvalidResult();
+
+            return await GetPaymentResultAsync(paymentId);
         }
         catch
         {
-            return new WebhookResult(
-                Aprobado: false,
-                PedidoId: string.Empty,
-                ReferenciaPago: string.Empty,
-                DatosRaw: "{}"
-            );
+            return InvalidResult();
         }
     }
+
+    private async Task<WebhookResult> GetPaymentResultAsync(string paymentId)
+    {
+        if (string.IsNullOrWhiteSpace(paymentId))
+            return InvalidResult();
+
+        var accessToken = _config["MercadoPago:AccessToken"];
+        if (string.IsNullOrWhiteSpace(accessToken))
+            return InvalidResult();
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"https://api.mercadopago.com/v1/payments/{Uri.EscapeDataString(paymentId)}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var response = await _httpClient.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return InvalidResult();
+
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var status = json.TryGetProperty("status", out var statusElement)
+            ? statusElement.GetString() ?? string.Empty
+            : string.Empty;
+        var pedidoId = json.TryGetProperty("external_reference", out var referenceElement)
+            ? referenceElement.GetString() ?? string.Empty
+            : string.Empty;
+        var currency = json.TryGetProperty("currency_id", out var currencyElement)
+            ? currencyElement.GetString()
+            : null;
+        decimal? amount = json.TryGetProperty("transaction_amount", out var amountElement) &&
+                          amountElement.TryGetDecimal(out var parsedAmount)
+            ? parsedAmount
+            : null;
+
+        return new WebhookResult(
+            Aprobado: status.Equals("approved", StringComparison.OrdinalIgnoreCase),
+            Pendiente: status is "pending" or "in_process",
+            PedidoId: pedidoId,
+            ReferenciaPago: paymentId,
+            DatosRaw: json.GetRawText(),
+            Monto: amount,
+            Moneda: currency,
+            Verificado: true);
+    }
+
+    private static WebhookResult InvalidResult() =>
+        new(false, false, string.Empty, string.Empty, "{}", Verificado: false);
 }

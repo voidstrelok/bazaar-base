@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Hosting;
+using TiendaApi.Helpers;
 
 namespace TiendaApi.Services.Storage;
 
@@ -22,7 +23,7 @@ public class LocalStorageService : IStorageService
         var folderPath = Path.Combine(_basePath, folder);
         Directory.CreateDirectory(folderPath);
 
-        var extension = Path.GetExtension(file.FileName);
+        var extension = await ImageValidation.ValidateAsync(file);
         var filename = $"{Guid.NewGuid()}{extension}";
         var filePath = Path.Combine(folderPath, filename);
 
