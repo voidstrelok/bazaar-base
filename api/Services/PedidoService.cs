@@ -53,7 +53,16 @@ public class PedidoService : IPedidoService
         var gatewayName = _config["Payment:Gateway"] ?? "transbank";
 
         // ── Transacción atómica: decremento de stock + creación del pedido ────
-        await using var transaction = await _db.Database.BeginTransactionAsync();
+        Pedido pedido = null!;
+        var paymentBaseUrl = _config["PublicBaseUrl"]?.TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(paymentBaseUrl))
+            throw new InvalidOperationException("PublicBaseUrl no está configurado.");
+
+        // La estrategia de reintentos debe envolver la transacción completa.
+        var strategy = _db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await _db.Database.BeginTransactionAsync();
 
         // Decrementar stock de cada producto de forma atómica (UPDATE ... WHERE Stock >= cantidad).
         // Si otro hilo ya consumió el stock, rowsAffected == 0 y se lanza excepción.
@@ -68,11 +77,11 @@ public class PedidoService : IPedidoService
                 throw new InvalidOperationException($"Stock insuficiente para '{nombre}'.");
         }
 
-        var publicBaseUrl = _config["PublicBaseUrl"]?.TrimEnd('/');
+        var publicBaseUrl = paymentBaseUrl;
         if (string.IsNullOrWhiteSpace(publicBaseUrl))
             throw new InvalidOperationException("PublicBaseUrl no está configurado.");
 
-        var pedido = new Pedido
+        pedido = new Pedido
         {
             Total = total,
             Estado = EstadoPedido.Pendiente,
@@ -97,13 +106,14 @@ public class PedidoService : IPedidoService
 
         await _db.SaveChangesAsync();
         await transaction.CommitAsync();
+        });
 
         var paymentRequest = new PaymentRequest(
             PedidoId: pedido.Id,
             Monto: total,
             Descripcion: $"Pedido #{pedido.Id}",
-            UrlRetorno: $"{publicBaseUrl}/api/payments/retorno",
-            UrlWebhook: $"{publicBaseUrl}/api/payments"
+            UrlRetorno: $"{paymentBaseUrl}/api/payments/retorno",
+            UrlWebhook: $"{paymentBaseUrl}/api/payments"
         );
 
         var paymentResponse = await _gateway.CreatePaymentAsync(paymentRequest);

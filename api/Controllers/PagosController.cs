@@ -91,8 +91,13 @@ public class PagosController : ControllerBase
             !int.TryParse(result.PedidoId, out var pedidoId))
             return;
 
+        Pedido? pedido = null;
+        var enviarConfirmacion = false;
+        var strategy = _db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
         await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-        var pedido = await _db.Pedidos
+        pedido = await _db.Pedidos
             .Include(p => p.Pago)
             .Include(p => p.Detalles).ThenInclude(d => d.Producto)
             .Include(p => p.Usuario)
@@ -124,7 +129,7 @@ public class PagosController : ControllerBase
         if (pago is null)
             throw new InvalidOperationException("El pedido no tiene registro de pago.");
 
-        var enviarConfirmacion = result.Aprobado;
+        enviarConfirmacion = result.Aprobado;
 
         if (result.Aprobado)
         {
@@ -150,8 +155,12 @@ public class PagosController : ControllerBase
 
         await _db.SaveChangesAsync();
         await transaction.CommitAsync();
+        });
 
-        if (enviarConfirmacion && pedido.Usuario is not null)
+        if (pedido is null || !enviarConfirmacion)
+            return;
+
+        if (pedido.Usuario is not null)
         {
             await _emailService.SendOrderConfirmationAsync(
                 pedido.Usuario.Email,
