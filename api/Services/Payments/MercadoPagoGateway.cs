@@ -94,17 +94,23 @@ public class MercadoPagoGateway : IPaymentGateway
             string eventType = request.Query["type"].ToString();
             string paymentId = request.Query["data.id"].ToString();
 
-            if (request.Method == HttpMethods.Post && request.ContentLength > 0)
+            // ContentLength can be null when the sender uses Transfer-Encoding:
+            // chunked. Do not use it as a gate, otherwise the JSON notification
+            // is silently ignored and paymentId remains empty.
+            if (request.Method == HttpMethods.Post && request.Body.CanRead)
             {
                 using var reader = new StreamReader(request.Body);
                 body = await reader.ReadToEndAsync();
-                using var doc = JsonDocument.Parse(body);
-                if (string.IsNullOrWhiteSpace(eventType) && doc.RootElement.TryGetProperty("type", out var typeElement))
-                    eventType = typeElement.GetString() ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(paymentId) &&
-                    doc.RootElement.TryGetProperty("data", out var dataElement) &&
-                    dataElement.TryGetProperty("id", out var idElement))
-                    paymentId = idElement.GetString() ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(body))
+                {
+                    using var doc = JsonDocument.Parse(body);
+                    if (string.IsNullOrWhiteSpace(eventType) && doc.RootElement.TryGetProperty("type", out var typeElement))
+                        eventType = typeElement.GetString() ?? string.Empty;
+                    if (string.IsNullOrWhiteSpace(paymentId) &&
+                        doc.RootElement.TryGetProperty("data", out var dataElement) &&
+                        dataElement.TryGetProperty("id", out var idElement))
+                        paymentId = idElement.GetString() ?? string.Empty;
+                }
             }
 
             // Browser redirects are not trusted. We use only the payment_id and
@@ -148,6 +154,19 @@ public class MercadoPagoGateway : IPaymentGateway
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
         using var response = await _httpClient.SendAsync(request);
+        // The URL tester sends a synthetic payment id (for example 123456).
+        // The notification signature has already been verified at this point;
+        // acknowledge a resource that does not exist so Mercado Pago does not
+        // report the URL test as unauthorized. There is no order to process.
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return new WebhookResult(
+                Aprobado: false,
+                Pendiente: false,
+                PedidoId: string.Empty,
+                ReferenciaPago: paymentId,
+                DatosRaw: "{}",
+                Verificado: true);
+
         if (!response.IsSuccessStatusCode)
             return InvalidResult();
 
