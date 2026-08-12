@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import useAuth from '../../shared/hooks/useAuth';
 import api from '../../shared/utils/api';
@@ -13,6 +14,8 @@ const estadoBadge = {
 
 export default function MisPedidosPage() {
   const { isAuthenticated } = useAuth();
+  const [retryingId, setRetryingId] = useState(null);
+  const [retryError, setRetryError] = useState('');
 
   const { data: pedidos = [], isLoading, isError } = useQuery({
     queryKey: ['mis-pedidos'],
@@ -23,6 +26,18 @@ export default function MisPedidosPage() {
   if (!isAuthenticated) {
     return <Navigate to="/login?redirect=/mis-pedidos" replace />;
   }
+
+  const retryPayment = async (pedidoId) => {
+    setRetryingId(pedidoId);
+    setRetryError('');
+    try {
+      const { data } = await api.post(`/api/pedidos/${pedidoId}/retry-payment`);
+      if (data.redirectUrl) window.location.href = data.redirectUrl;
+    } catch (err) {
+      setRetryError(err?.response?.data?.message || 'No se pudo iniciar el pago.');
+      setRetryingId(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -47,6 +62,7 @@ export default function MisPedidosPage() {
             <p>Aún no tienes pedidos.</p>
           </div>
         )}
+        {retryError && <p className="text-red-600 text-sm mb-4">{retryError}</p>}
         <div className="space-y-4">
           {pedidos.map((pedido) => (
             <div
@@ -83,6 +99,15 @@ export default function MisPedidosPage() {
                   <p className="text-xs text-gray-400 mt-1">
                     Pago: {pedido.estadoPago}
                   </p>
+                )}
+                {pedido.estado === 'Pendiente' && pedido.gateway === 'mercadopago' && (
+                  <button
+                    onClick={() => retryPayment(pedido.id)}
+                    disabled={retryingId === pedido.id}
+                    className="mt-2 text-sm text-indigo-600 hover:underline disabled:opacity-50"
+                  >
+                    {retryingId === pedido.id ? 'Cargando…' : 'Continuar pago'}
+                  </button>
                 )}
               </div>
             </div>

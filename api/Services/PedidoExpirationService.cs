@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TiendaApi.Data;
 using TiendaApi.Models;
+using TiendaApi.Services.Payments;
 
 namespace TiendaApi.Services;
 
@@ -46,11 +47,17 @@ public class PedidoExpirationService : BackgroundService
         await using var scope = _scopeFactory.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+        var gateway = scope.ServiceProvider.GetRequiredService<IPaymentGateway>();
+        var settlement = scope.ServiceProvider.GetRequiredService<IPaymentSettlementService>();
 
         var expirationMinutes = config.GetValue<int>("Orders:ExpirationMinutes", 30);
         var cutoff = DateTime.UtcNow.AddMinutes(-expirationMinutes);
+        var pendingPaymentExpirationMinutes = config.GetValue<int>(
+            "Orders:PendingPaymentExpirationMinutes", 120);
+        var pendingPaymentCutoff = DateTime.UtcNow.AddMinutes(-pendingPaymentExpirationMinutes);
 
         var pedidosExpirados = await db.Pedidos
+            .Include(p => p.Pago)
             .Include(p => p.Detalles).ThenInclude(d => d.Producto)
             .Where(p => p.Estado == EstadoPedido.Pendiente && p.FechaCreacion < cutoff)
             .ToListAsync(ct);
@@ -60,6 +67,31 @@ public class PedidoExpirationService : BackgroundService
 
         foreach (var pedido in pedidosExpirados)
         {
+            // Consultar el gateway antes de liberar stock evita cancelar un pago
+            // aprobado cuyo webhook llegó tarde. Si Mercado Pago no responde,
+            // dejamos el pedido pendiente para que el siguiente ciclo reintente.
+            if (pedido.Pago?.Gateway == gateway.GatewayName &&
+                !string.IsNullOrWhiteSpace(pedido.Pago.ReferenciaPago))
+            {
+                var result = await gateway.GetPaymentStatusAsync(pedido.Pago.ReferenciaPago);
+                if (!result.Verificado)
+                    continue;
+                if (result.Aprobado)
+                {
+                    await settlement.ApplyAsync(result);
+                    continue;
+                }
+
+                if (result.Pendiente && pedido.FechaCreacion >= pendingPaymentCutoff)
+                    continue;
+
+                if (!result.Pendiente)
+                {
+                    await settlement.ApplyAsync(result);
+                    continue;
+                }
+            }
+
             pedido.Estado = EstadoPedido.Cancelado;
             foreach (var detalle in pedido.Detalles)
             {

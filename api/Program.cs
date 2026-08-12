@@ -72,7 +72,9 @@ builder.Services.AddStorageService(builder.Configuration);
 // ── Payment gateway (según config) ────────────────────────────────────────────
 builder.Services.AddPaymentGateway(builder.Configuration);
 builder.Services.AddScoped<IPedidoService, PedidoService>();
+builder.Services.AddScoped<IPaymentSettlementService, PaymentSettlementService>();
 builder.Services.AddHostedService<PedidoExpirationService>();
+builder.Services.AddHostedService<PendingPaymentReconciliationService>();
 
 // ── Subida de archivos grandes ───────────────────────────────────────────────
 builder.Services.Configure<FormOptions>(options =>

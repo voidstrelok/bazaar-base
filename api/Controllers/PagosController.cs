@@ -17,14 +17,16 @@ public class PagosController : ControllerBase
     private readonly IConfiguration _config;
     private readonly IEmailService _emailService;
     private readonly ILogger<PagosController> _logger;
+    private readonly IPaymentSettlementService _settlement;
 
-    public PagosController(IPaymentGateway gateway, AppDbContext db, IConfiguration config, IEmailService emailService, ILogger<PagosController> logger)
+    public PagosController(IPaymentGateway gateway, AppDbContext db, IConfiguration config, IEmailService emailService, ILogger<PagosController> logger, IPaymentSettlementService settlement)
     {
         _gateway = gateway;
         _db = db;
         _config = config;
         _emailService = emailService;
         _logger = logger;
+        _settlement = settlement;
     }
 
     // POST api/payments/webhook — público, sin autenticación
@@ -37,7 +39,7 @@ public class PagosController : ControllerBase
 
         try
         {
-            await ProcessPaymentResult(result);
+            await _settlement.ApplyAsync(result);
             return Ok();
         }
         catch (Exception ex)
@@ -58,7 +60,7 @@ public class PagosController : ControllerBase
         {
             var result = await _gateway.ProcessWebhookAsync(Request);
             if (result.Verificado)
-                await ProcessPaymentResult(result);
+                await _settlement.ApplyAsync(result);
 
             pedidoIdStr = result.PedidoId;
             estado = result.Aprobado ? "aprobado" : result.Pendiente ? "pendiente" : "rechazado";

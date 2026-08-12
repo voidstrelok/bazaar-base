@@ -130,7 +130,12 @@ public class PedidoService : IPedidoService
         await _db.SaveChangesAsync();
 
         if (!paymentResponse.Success)
+        {
+            // No dejamos stock reservado si Mercado Pago ni siquiera pudo crear
+            // la preferencia. El pedido queda cancelado y puede intentarse de nuevo.
+            await UpdateEstadoAsync(pedido.Id, EstadoPedido.Cancelado);
             throw new InvalidOperationException(paymentResponse.ErrorMessage ?? "Error al iniciar el pago.");
+        }
 
         return new InitPaymentResponse(
             PedidoId: pedido.Id,
@@ -138,6 +143,38 @@ public class PedidoService : IPedidoService
             Token: paymentResponse.Token,
             Gateway: gatewayName
         );
+    }
+
+    public async Task<InitPaymentResponse> RetryPaymentAsync(int pedidoId, int usuarioId)
+    {
+        var pedido = await _db.Pedidos
+            .Include(p => p.Pago)
+            .FirstOrDefaultAsync(p => p.Id == pedidoId && p.UsuarioId == usuarioId)
+            ?? throw new KeyNotFoundException("Pedido no encontrado.");
+
+        if (pedido.Estado != EstadoPedido.Pendiente || pedido.Pago is null)
+            throw new InvalidOperationException("El pedido no admite un nuevo intento de pago.");
+
+        var paymentBaseUrl = _config["PublicBaseUrl"]?.TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(paymentBaseUrl))
+            throw new InvalidOperationException("PublicBaseUrl no está configurado.");
+
+        var response = await _gateway.CreatePaymentAsync(new PaymentRequest(
+            pedido.Id,
+            pedido.Total,
+            $"Pedido #{pedido.Id}",
+            $"{paymentBaseUrl}/api/payments/retorno",
+            $"{paymentBaseUrl}/api/payments"));
+
+        if (!response.Success)
+            throw new InvalidOperationException(response.ErrorMessage ?? "Error al iniciar el pago.");
+
+        pedido.Pago.Estado = EstadoPago.Pendiente;
+        pedido.Pago.ReferenciaPago = response.Token ?? response.PaymentId;
+        pedido.Pago.DatosRespuesta = null;
+        await _db.SaveChangesAsync();
+
+        return new InitPaymentResponse(pedido.Id, response.RedirectUrl, response.Token, _gateway.GatewayName);
     }
 
     public async Task<PedidoDto> GetPedidoAsync(int pedidoId, int usuarioId)

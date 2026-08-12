@@ -100,6 +100,9 @@ public class TransbankGateway : IPaymentGateway
         );
     }
 
+    public Task<WebhookResult> GetPaymentStatusAsync(string paymentId) =>
+        Task.FromResult(new WebhookResult(false, false, string.Empty, paymentId, "{}"));
+
     private Transaction BuildTransaction()
     {
         var commerceCode = _config["Transbank:CommerceCode"]

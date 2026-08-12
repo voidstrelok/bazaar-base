@@ -31,5 +31,6 @@ public interface IPaymentGateway
 {
     Task<PaymentResponse> CreatePaymentAsync(PaymentRequest request);
     Task<WebhookResult> ProcessWebhookAsync(HttpRequest request);
+    Task<WebhookResult> GetPaymentStatusAsync(string paymentId);
     string GatewayName { get; }
 }

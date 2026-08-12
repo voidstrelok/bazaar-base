@@ -118,7 +118,7 @@ public class MercadoPagoGateway : IPaymentGateway
             if (request.Method == HttpMethods.Get)
             {
                 paymentId = request.Query["payment_id"].ToString();
-                return await GetPaymentResultAsync(paymentId);
+                return await GetPaymentStatusAsync(paymentId);
             }
 
             if (!string.Equals(eventType, "payment", StringComparison.OrdinalIgnoreCase))
@@ -131,7 +131,7 @@ public class MercadoPagoGateway : IPaymentGateway
                     _config["MercadoPago:WebhookSecret"]))
                 return InvalidResult();
 
-            return await GetPaymentResultAsync(paymentId);
+            return await GetPaymentStatusAsync(paymentId);
         }
         catch
         {
@@ -139,7 +139,7 @@ public class MercadoPagoGateway : IPaymentGateway
         }
     }
 
-    private async Task<WebhookResult> GetPaymentResultAsync(string paymentId)
+    public async Task<WebhookResult> GetPaymentStatusAsync(string paymentId)
     {
         if (string.IsNullOrWhiteSpace(paymentId))
             return InvalidResult();

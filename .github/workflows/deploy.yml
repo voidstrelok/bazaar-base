@@ -1,0 +1,20 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Update and restart Docker Compose
+    runs-on: [self-hosted, linux]
+    steps:
+      - name: Update repository
+        run: git pull --ff-only origin main
+
+      - name: Rebuild and restart services
+        run: docker compose up -d --build --remove-orphans

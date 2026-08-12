@@ -67,6 +67,25 @@ public class PedidosController : ControllerBase
         }
     }
 
+    [HttpPost("{id:int}/retry-payment")]
+    [Authorize]
+    public async Task<IActionResult> RetryPayment(int id)
+    {
+        try
+        {
+            var result = await _pedidoService.RetryPaymentAsync(id, GetUsuarioId());
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     // GET api/pedidos/admin
     [HttpGet("admin")]
     [Authorize(Policy = "RequireAdmin")]
