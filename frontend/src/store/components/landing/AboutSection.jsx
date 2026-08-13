@@ -1,27 +1,12 @@
-export default function AboutSection() {
-  return (
-    <section className="bg-dark-bg py-20 px-4">
-      <div className="max-w-6xl mx-auto md:grid md:grid-cols-2 md:gap-16 items-center">
-        {/* Text column */}
-        <div className="flex flex-col gap-6">
-          {/* EDITABLE: about title, description, image */}
-          <h2 className="text-3xl md:text-4xl font-extrabold text-dark-text">
-            Tú <span className="text-brand">historia</span>
-          </h2>
-          <p className="text-dark-muted text-lg leading-relaxed">
-            Cada negocio tiene una historia que merece ser contada. Esta tienda es el espacio para
-            contarla: muestra lo que vendes, refleja quién eres y ofrece a tus clientes una
-            experiencia de compra cómoda, segura y a tu medida. Porque vender online no debería ser
-            complicado.
-          </p>
-        </div>
+import { useNavigate } from 'react-router-dom';
 
-        {/* Image placeholder column */}
-        <div className="mt-10 md:mt-0">
-          <div className="w-full h-72 md:h-80 bg-dark-surface-2 rounded-2xl border border-brand/10 flex items-center justify-center">
-            <span className="text-dark-muted text-sm">Imagen de la tienda</span>
-          </div>
-        </div>
+export default function AboutSection() {
+  const navigate = useNavigate();
+  return (
+    <section className="bg-dark-bg px-4 py-20 sm:py-24">
+      <div className="mx-auto grid max-w-7xl gap-10 rounded-3xl border border-brand/20 bg-[linear-gradient(120deg,rgba(255,189,0,0.12),rgba(255,189,0,0.02)_45%,transparent)] p-8 sm:p-12 lg:grid-cols-[1.35fr_.65fr] lg:items-end">
+        <div><p className="text-sm font-bold uppercase tracking-[0.16em] text-brand">Más que una plantilla</p><h2 className="mt-4 max-w-2xl text-3xl font-extrabold tracking-tight text-dark-text sm:text-4xl">Un sistema que puedes clonar, adaptar y hacer crecer con tu negocio.</h2><p className="mt-5 max-w-xl text-lg leading-relaxed text-dark-muted">Parte con una base sólida: tienda pública, panel de administración, pagos y operación preparada para tu propia marca y dominio.</p></div>
+        <div className="lg:text-right"><button onClick={() => navigate('/catalogo')} className="rounded-xl bg-brand px-7 py-4 font-bold text-black transition hover:bg-brand-dark">Ver tienda demo</button></div>
       </div>
     </section>
   );

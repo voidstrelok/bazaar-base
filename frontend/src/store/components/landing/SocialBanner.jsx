@@ -4,11 +4,11 @@ export default function SocialBanner() {
   const hasSocial = STORE_INSTAGRAM || STORE_FACEBOOK || STORE_TWITTER || STORE_WHATSAPP;
 
   return (
-    <section className="bg-brand py-14 px-4">
+    <section className="bg-brand px-4 py-16">
       {/* EDITABLE: social text, add/remove networks */}
       <div className="max-w-4xl mx-auto text-center flex flex-col items-center gap-6">
-        <p className="text-black font-bold text-xl md:text-2xl leading-snug max-w-2xl">
-          Promociona tu redes para mostrar todas tus novedades, promociones y lanzamientos.
+        <p className="max-w-2xl text-center text-xl font-bold leading-snug text-black md:text-2xl">
+          Construye una presencia digital que se vea profesional y se sienta como tu marca.
         </p>
 
         {hasSocial && (

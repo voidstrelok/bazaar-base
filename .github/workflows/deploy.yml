@@ -11,10 +11,22 @@ concurrency:
 jobs:
   deploy:
     name: Update and restart Docker Compose
-    runs-on: [self-hosted, linux]
+    runs-on: ubuntu-latest
     steps:
-      - name: Update repository
-        run: git pull --ff-only origin main
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Rebuild and restart services
-        run: docker compose up -d --build --remove-orphans
+      - name: Trust VPS host key
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -H thepit.cl >> ~/.ssh/known_hosts
+
+      - name: Update repository and restart services
+        run: |
+          ssh deply@thepit.cl -p 22022" \
+            "cd bazaar && \
+             git pull --ff-only origin main && \
+             docker compose up -d --build --remove-orphans"
