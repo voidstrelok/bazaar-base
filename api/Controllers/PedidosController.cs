@@ -12,10 +12,12 @@ namespace TiendaApi.Controllers;
 public class PedidosController : ControllerBase
 {
     private readonly IPedidoService _pedidoService;
+    private readonly IOrderReceiptService _receiptService;
 
-    public PedidosController(IPedidoService pedidoService)
+    public PedidosController(IPedidoService pedidoService, IOrderReceiptService receiptService)
     {
         _pedidoService = pedidoService;
+        _receiptService = receiptService;
     }
 
     private int GetUsuarioId() =>
@@ -64,6 +66,26 @@ public class PedidosController : ControllerBase
         catch (KeyNotFoundException)
         {
             return NotFound();
+        }
+    }
+
+    // GET api/pedidos/{id}/comprobante
+    [HttpGet("{id:int}/comprobante")]
+    [Authorize]
+    public async Task<IActionResult> GetReceipt(int id)
+    {
+        try
+        {
+            var pdf = await _receiptService.CreateReceiptAsync(id, GetUsuarioId());
+            return File(pdf, "application/pdf", $"comprobante-pedido-{id}.pdf");
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
     }
 

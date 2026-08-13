@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<Pedido> Pedidos => Set<Pedido>();
     public DbSet<DetallePedido> DetallesPedido => Set<DetallePedido>();
     public DbSet<Pago> Pagos => Set<Pago>();
+    public DbSet<NotificacionEmail> NotificacionesEmail => Set<NotificacionEmail>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -64,6 +65,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<DetallePedido>(e =>
         {
             e.Property(d => d.PrecioUnitario).HasPrecision(18, 2);
+            e.Property(d => d.ProductoNombre).HasMaxLength(300);
             e.HasOne(d => d.Pedido)
              .WithMany(p => p.Detalles)
              .HasForeignKey(d => d.PedidoId)
@@ -83,6 +85,19 @@ public class AppDbContext : DbContext
             e.HasOne(p => p.Pedido)
              .WithOne(p => p.Pago)
              .HasForeignKey<Pago>(p => p.PedidoId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<NotificacionEmail>(e =>
+        {
+            e.Property(n => n.Tipo).HasConversion<string>().HasMaxLength(50);
+            e.Property(n => n.Estado).HasConversion<string>().HasMaxLength(20);
+            e.Property(n => n.Destinatario).HasMaxLength(256);
+            e.HasIndex(n => new { n.PedidoId, n.Tipo }).IsUnique();
+            e.HasIndex(n => new { n.Estado, n.ProximoIntento });
+            e.HasOne(n => n.Pedido)
+             .WithMany()
+             .HasForeignKey(n => n.PedidoId)
              .OnDelete(DeleteBehavior.Cascade);
         });
 

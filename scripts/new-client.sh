@@ -201,6 +201,8 @@ fi
 read -rsp "API key de Resend: " RESEND_API_KEY
 echo ""
 read -rp "Email remitente verificado de Resend: " RESEND_FROM_EMAIL
+read -rp "Email para avisos de pedidos pagados [${ADMIN_EMAIL}]: " ORDERS_NOTIFICATION_EMAIL
+ORDERS_NOTIFICATION_EMAIL="${ORDERS_NOTIFICATION_EMAIL:-$ADMIN_EMAIL}"
 
 # Checkout
 read -rp "¿Habilitar checkout y carrito? (true|false) [true]: " ENABLE_CHECKOUT
@@ -288,6 +290,7 @@ ADMIN_NOMBRE=${ADMIN_NOMBRE}
 # Email
 RESEND_API_KEY=${RESEND_API_KEY}
 RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL}
+ORDERS_NOTIFICATION_EMAIL=${ORDERS_NOTIFICATION_EMAIL}
 
 # Checkout y carrito
 ENABLE_CHECKOUT=${ENABLE_CHECKOUT}

@@ -14,14 +14,16 @@ public interface IPaymentSettlementService
 public class PaymentSettlementService : IPaymentSettlementService
 {
     private readonly AppDbContext _db;
-    private readonly IEmailService _emailService;
     private readonly IPaymentGateway _gateway;
+    private readonly IConfiguration _config;
+    private readonly ILogger<PaymentSettlementService> _logger;
 
-    public PaymentSettlementService(AppDbContext db, IEmailService emailService, IPaymentGateway gateway)
+    public PaymentSettlementService(AppDbContext db, IPaymentGateway gateway, IConfiguration config, ILogger<PaymentSettlementService> logger)
     {
         _db = db;
-        _emailService = emailService;
         _gateway = gateway;
+        _config = config;
+        _logger = logger;
     }
 
     public async Task ApplyAsync(WebhookResult result)
@@ -31,7 +33,6 @@ public class PaymentSettlementService : IPaymentSettlementService
             return;
 
         Pedido? pedido = null;
-        var enviarConfirmacion = false;
         var strategy = _db.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
         {
@@ -66,7 +67,7 @@ public class PaymentSettlementService : IPaymentSettlementService
                 pedido.Estado = EstadoPedido.Pagado;
                 pago.Estado = EstadoPago.Aprobado;
                 pago.FechaPago = DateTime.UtcNow;
-                enviarConfirmacion = true;
+                EnqueuePaidOrderNotifications(pedido);
             }
             else
             {
@@ -80,8 +81,40 @@ public class PaymentSettlementService : IPaymentSettlementService
             await transaction.CommitAsync();
         });
 
-        if (enviarConfirmacion && pedido?.Usuario is not null)
-            await _emailService.SendOrderConfirmationAsync(
-                pedido.Usuario.Email, pedido.Usuario.Nombre, pedido.Id, pedido.Total);
     }
+
+    private void EnqueuePaidOrderNotifications(Pedido pedido)
+    {
+        var items = pedido.Detalles.Select(d => new OrderEmailItem(
+            d.ProductoNombre, d.Cantidad, d.PrecioUnitario, d.PrecioUnitario * d.Cantidad)).ToList();
+        var adminBaseUrl = _config["Frontend:BaseUrl"]?.TrimEnd('/');
+        var adminUrl = string.IsNullOrWhiteSpace(adminBaseUrl) ? null : $"{adminBaseUrl}/admin/pedidos";
+
+        AddNotification(TipoNotificacionEmail.ConfirmacionCliente, new OrderEmailPayload(
+            pedido.Id, pedido.FechaCreacion, pedido.Total, pedido.Gateway,
+            pedido.Usuario.Email, pedido.Usuario.Nombre, pedido.Usuario.Email, items,
+            pedido.Pago?.ReferenciaPago, adminUrl));
+
+        var sellerEmail = _config["Orders:NotificationEmail"];
+        if (string.IsNullOrWhiteSpace(sellerEmail))
+        {
+            _logger.LogWarning("Orders:NotificationEmail no está configurado; se omitirá el aviso del pedido #{PedidoId} al vendedor.", pedido.Id);
+            return;
+        }
+
+        AddNotification(TipoNotificacionEmail.NuevoPedidoPagado, new OrderEmailPayload(
+            pedido.Id, pedido.FechaCreacion, pedido.Total, pedido.Gateway,
+            sellerEmail.Trim(), pedido.Usuario.Nombre, pedido.Usuario.Email, items,
+            pedido.Pago?.ReferenciaPago, adminUrl));
+    }
+
+    private void AddNotification(TipoNotificacionEmail type, OrderEmailPayload payload) =>
+        _db.NotificacionesEmail.Add(new NotificacionEmail
+        {
+            PedidoId = payload.PedidoId,
+            Tipo = type,
+            Destinatario = payload.Destinatario,
+            Datos = System.Text.Json.JsonSerializer.Serialize(payload),
+            FechaCreacion = DateTime.UtcNow,
+        });
 }

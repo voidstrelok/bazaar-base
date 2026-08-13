@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import useAuth from '../../shared/hooks/useAuth';
 import api from '../../shared/utils/api';
 
@@ -109,6 +109,7 @@ export default function MisPedidosPage() {
                     {retryingId === pedido.id ? 'Cargando…' : 'Continuar pago'}
                   </button>
                 )}
+                <Link to={`/mis-pedidos/${pedido.id}`} className="mt-2 block text-sm text-indigo-600 hover:underline">Ver detalle</Link>
               </div>
             </div>
           ))}

@@ -68,6 +68,7 @@ services:
       - Resend__ApiKey=${RESEND_API_KEY:-}
       - Resend__FromEmail=${RESEND_FROM_EMAIL:-}
       - Resend__FromName=${STORE_NAME:-Bazaar}
+      - Orders__NotificationEmail=${ORDERS_NOTIFICATION_EMAIL:-}
     volumes:
       - uploads_data:/app/uploads
     healthcheck:

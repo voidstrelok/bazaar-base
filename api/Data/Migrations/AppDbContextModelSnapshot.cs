@@ -71,6 +71,11 @@ namespace TiendaApi.Data.Migrations
                     b.Property<int>("PedidoId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("ProductoNombre")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
                     b.Property<decimal>("PrecioUnitario")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -85,6 +90,58 @@ namespace TiendaApi.Data.Migrations
                     b.HasIndex("ProductoId");
 
                     b.ToTable("DetallesPedido");
+                });
+
+            modelBuilder.Entity("TiendaApi.Models.NotificacionEmail", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Datos")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Destinatario")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaEnvio")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Intentos")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PedidoId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ProximoIntento")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("UltimoError")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Estado", "ProximoIntento");
+                    b.HasIndex("PedidoId", "Tipo").IsUnique();
+                    b.ToTable("NotificacionesEmail");
                 });
 
             modelBuilder.Entity("TiendaApi.Models.Pago", b =>
@@ -126,6 +183,17 @@ namespace TiendaApi.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("Pagos");
+                });
+
+            modelBuilder.Entity("TiendaApi.Models.NotificacionEmail", b =>
+                {
+                    b.HasOne("TiendaApi.Models.Pedido", "Pedido")
+                        .WithMany()
+                        .HasForeignKey("PedidoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Pedido");
                 });
 
             modelBuilder.Entity("TiendaApi.Models.Pedido", b =>

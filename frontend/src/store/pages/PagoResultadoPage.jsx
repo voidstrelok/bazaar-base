@@ -24,10 +24,10 @@ export default function PagoResultadoPage() {
               Tu pedido #{pedidoId} fue procesado correctamente. Recibirás más información pronto.
             </p>
             <Link
-              to="/mis-pedidos"
+              to={pedidoId ? `/mis-pedidos/${pedidoId}` : '/mis-pedidos'}
               className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors"
             >
-              Ver mis pedidos
+              Ver detalle del pedido
             </Link>
           </>
         ) : (

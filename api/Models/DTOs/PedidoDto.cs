@@ -22,7 +22,9 @@ public record PedidoDto(
     string Gateway,
     DateTime FechaCreacion,
     IEnumerable<DetallePedidoDto> Detalles,
-    string? EstadoPago
+    string? EstadoPago,
+    DateTime? FechaPago,
+    string? ReferenciaPago
 );
 
 public record InitPaymentResponse(

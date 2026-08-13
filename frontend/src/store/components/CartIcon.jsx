@@ -7,7 +7,7 @@ export default function CartIcon() {
   return (
     <button
       onClick={toggleCart}
-      className="relative p-2 text-gray-700 hover:text-indigo-600 transition-colors"
+      className="relative p-2 text-dark-text hover:text-brand transition-colors"
       aria-label="Abrir carrito"
     >
       <svg
@@ -25,7 +25,7 @@ export default function CartIcon() {
         />
       </svg>
       {itemCount > 0 && (
-        <span className="absolute -top-1 -right-1 bg-indigo-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+        <span className="absolute -top-1 -right-1 bg-brand text-black text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
           {itemCount > 99 ? '99+' : itemCount}
         </span>
       )}

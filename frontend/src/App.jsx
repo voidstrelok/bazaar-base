@@ -12,10 +12,12 @@ import ProductoDetallePage from './store/pages/ProductoDetallePage';
 import CheckoutPage from './store/pages/CheckoutPage';
 import PagoResultadoPage from './store/pages/PagoResultadoPage';
 import MisPedidosPage from './store/pages/MisPedidosPage';
+import PedidoDetallePage from './store/pages/PedidoDetallePage';
 import LoginPage from './store/pages/LoginPage';
 import RegistroPage from './store/pages/RegistroPage';
 import MiCuentaPage from './store/pages/MiCuentaPage';
 import CartDrawer from './store/components/CartDrawer';
+import './store/store.css';
 
 // Admin
 import AdminLayout from './admin/layout/AdminLayout';
@@ -34,10 +36,10 @@ function AppLayout() {
 
   return (
     <>
-      {/* Mostrar Navbar solo fuera del panel admin */}
-      {!isAdmin && <Navbar />}
-      {ENABLE_CHECKOUT && !isAdmin && <CartDrawer />}
-      <Routes>
+      {!isAdmin && <div className="store-theme">
+        <Navbar />
+        {ENABLE_CHECKOUT && <CartDrawer />}
+        <Routes>
         {/* Tienda pública */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/catalogo" element={<CatalogoPage />} />
@@ -64,6 +66,9 @@ function AppLayout() {
             }
           />
         )}
+        {ENABLE_CHECKOUT && (
+          <Route path="/mis-pedidos/:id" element={<ProtectedRoute><PedidoDetallePage /></ProtectedRoute>} />
+        )}
 
         {/* Admin — login */}
         <Route path="/admin/login" element={<LoginAdminPage />} />
@@ -85,7 +90,18 @@ function AppLayout() {
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+        </Routes>
+      </div>}
+      {isAdmin && <Routes>
+        <Route path="/admin/login" element={<LoginAdminPage />} />
+        <Route path="/admin" element={<ProtectedRoute requiredRole="ADMIN"><AdminLayout /></ProtectedRoute>}>
+          <Route index element={<DashboardPage />} />
+          <Route path="productos" element={<ProductosAdminPage />} />
+          <Route path="categorias" element={<CategoriasAdminPage />} />
+          <Route path="pedidos" element={<PedidosAdminPage />} />
+          <Route path="usuarios" element={<UsuariosAdminPage />} />
+        </Route>
+      </Routes>}
     </>
   );
 }

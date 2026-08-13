@@ -99,6 +99,7 @@ public class PedidoService : IPedidoService
             {
                 Pedido = pedido,
                 ProductoId = item.ProductoId,
+                ProductoNombre = producto.Nombre,
                 Cantidad = item.Cantidad,
                 PrecioUnitario = producto.Precio,
             });
@@ -247,12 +248,14 @@ public class PedidoService : IPedidoService
             FechaCreacion: p.FechaCreacion,
             Detalles: p.Detalles.Select(d => new DetallePedidoDto(
                 ProductoId: d.ProductoId,
-                ProductoNombre: d.Producto.Nombre,
+                ProductoNombre: d.ProductoNombre,
                 ImagenUrl: d.Producto.ImagenUrl,
                 Cantidad: d.Cantidad,
                 PrecioUnitario: d.PrecioUnitario,
                 Subtotal: d.PrecioUnitario * d.Cantidad
             )),
-            EstadoPago: p.Pago?.Estado.ToString()
+            EstadoPago: p.Pago?.Estado.ToString(),
+            FechaPago: p.Pago?.FechaPago,
+            ReferenciaPago: p.Pago?.ReferenciaPago
         );
 }

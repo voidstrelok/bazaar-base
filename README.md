@@ -89,6 +89,7 @@ Copia `.env.example` a `.env` y ajusta los valores:
 | `STORAGE_PROVIDER` | Storage activo: `cloudinary` o `local` | `cloudinary` |
 | `CLOUDINARY_URL` | URL de Cloudinary | `cloudinary://key:secret@cloud` |
 | `LOCAL_STORAGE_PATH` | Ruta local de archivos (si storage=local) | `/app/uploads` |
+| `ORDERS_NOTIFICATION_EMAIL` | Correo operacional que recibe avisos de pedidos pagados | `ventas@mitienda.cl` |
 
 ---
 

@@ -65,6 +65,9 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 // ── Email (Resend via HTTP) ──────────────────────────────────────────────────
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IEmailNotificationDispatcher, EmailNotificationDispatcher>();
+builder.Services.AddScoped<IOrderReceiptService, OrderReceiptService>();
+builder.Services.AddSingleton(TimeProvider.System);
 
 // ── Storage service (según config) ───────────────────────────────────────────
 builder.Services.AddStorageService(builder.Configuration);
@@ -75,6 +78,7 @@ builder.Services.AddScoped<IPedidoService, PedidoService>();
 builder.Services.AddScoped<IPaymentSettlementService, PaymentSettlementService>();
 builder.Services.AddHostedService<PedidoExpirationService>();
 builder.Services.AddHostedService<PendingPaymentReconciliationService>();
+builder.Services.AddHostedService<EmailNotificationDispatchService>();
 
 // ── Subida de archivos grandes ───────────────────────────────────────────────
 builder.Services.Configure<FormOptions>(options =>

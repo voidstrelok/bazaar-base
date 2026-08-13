@@ -2,6 +2,7 @@ namespace TiendaApi.Services;
 
 public interface IEmailService
 {
-    Task SendOtpAsync(string email, string nombre, string code);
-    Task SendOrderConfirmationAsync(string email, string nombre, int pedidoId, decimal total);
+    Task<bool> SendOtpAsync(string email, string nombre, string code);
+    Task<bool> SendOrderConfirmationAsync(OrderEmailPayload payload);
+    Task<bool> SendNewPaidOrderNotificationAsync(OrderEmailPayload payload);
 }
