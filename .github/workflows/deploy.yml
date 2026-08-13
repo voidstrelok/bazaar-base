@@ -18,9 +18,15 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
+      - name: Trust VPS host key
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -p 22022 -H thepit.cl >> ~/.ssh/known_hosts
+
       - name: Update repository and restart services
         run: |
-          ssh deploy@thepit.cl -p 22022 \
+          ssh deploy@thepit.cl -p 22022" \
             "cd bazaar && \
              git pull --ff-only origin main && \
              docker compose up -d --build --remove-orphans"
