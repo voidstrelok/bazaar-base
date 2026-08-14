@@ -10,6 +10,7 @@ public interface IAuthService
     Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request);
     Task RevokeTokenAsync(string email);
     Task<AuthResponse> GuestRegisterAsync(GuestRegisterRequest request);
+    Task<RegisterPendingResponse> RegisterOtpAsync(OtpRegisterRequest request);
     Task<bool> SendOtpAsync(string email);
     Task<AuthResponse> VerifyOtpAsync(VerifyOtpRequest request);
 }

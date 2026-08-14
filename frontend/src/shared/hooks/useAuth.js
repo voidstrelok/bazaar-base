@@ -39,7 +39,7 @@ const useAuth = create((set, get) => ({
   },
 
   registerForOtp: async (nombre, rut, email) => {
-    await api.post('/api/auth/guest', { nombre, rut, email });
+    await api.post('/api/auth/register-otp', { nombre, rut, email });
     // Crea la cuenta sin iniciar sesión; el OTP se envía a continuación
   },
 

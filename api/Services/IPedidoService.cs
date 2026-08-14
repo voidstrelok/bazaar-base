@@ -9,6 +9,8 @@ public interface IPedidoService
     Task<InitPaymentResponse> RetryPaymentAsync(int pedidoId, int usuarioId);
     Task<PedidoDto> GetPedidoAsync(int pedidoId, int usuarioId);
     Task<IEnumerable<PedidoDto>> GetMisPedidosAsync(int usuarioId);
-    Task<IEnumerable<PedidoDto>> GetAllPedidosAsync(int pagina, int tamano);
+    Task<PedidoListResponse> GetAllPedidosAsync(int pagina, int tamano);
+    Task<PedidoDto> GetPedidoAdminAsync(int pedidoId);
+    Task<PedidoDashboardDto> GetDashboardAsync();
     Task UpdateEstadoAsync(int pedidoId, EstadoPedido estado);
 }

@@ -136,13 +136,15 @@ public class AuthController : ControllerBase
             if (request.NuevaPassword.Length < 8)
                 return BadRequest(new { message = "La contraseña debe tener al menos 8 caracteres." });
 
-            if (string.IsNullOrWhiteSpace(request.PasswordActual))
+            var hasPassword = !string.IsNullOrEmpty(u.PasswordHash) && !u.EsInvitado;
+            if (hasPassword && string.IsNullOrWhiteSpace(request.PasswordActual))
                 return BadRequest(new { message = "Debes ingresar tu contraseña actual para cambiarla." });
 
-            if (!BCrypt.Net.BCrypt.Verify(request.PasswordActual, u.PasswordHash))
+            if (hasPassword && !BCrypt.Net.BCrypt.Verify(request.PasswordActual, u.PasswordHash))
                 return BadRequest(new { message = "La contraseña actual es incorrecta." });
 
             u.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NuevaPassword);
+            u.EsInvitado = false;
         }
 
         await db.SaveChangesAsync();
@@ -156,6 +158,21 @@ public class AuthController : ControllerBase
         try
         {
             var response = await _authService.GuestRegisterAsync(request);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    // POST api/auth/register-otp — registro sin contraseña para acceso por código
+    [HttpPost("register-otp")]
+    public async Task<IActionResult> RegisterOtp([FromBody] OtpRegisterRequest request)
+    {
+        try
+        {
+            var response = await _authService.RegisterOtpAsync(request);
             return Ok(response);
         }
         catch (InvalidOperationException ex)

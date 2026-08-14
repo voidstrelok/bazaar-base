@@ -105,7 +105,8 @@ public class AuthService : IAuthService
         if (!usuario.Activo)
             throw new InvalidOperationException("La cuenta está desactivada.");
 
-        if (!BCrypt.Net.BCrypt.Verify(request.Password, usuario.PasswordHash))
+        if (string.IsNullOrEmpty(usuario.PasswordHash) ||
+            !BCrypt.Net.BCrypt.Verify(request.Password, usuario.PasswordHash))
             throw new InvalidOperationException("Credenciales inválidas.");
 
         var refreshToken = _tokenService.GenerateRefreshToken();
@@ -203,6 +204,50 @@ public class AuthService : IAuthService
         return await IssueTokensFor(usuario);
     }
 
+    public async Task<RegisterPendingResponse> RegisterOtpAsync(OtpRegisterRequest request)
+    {
+        ValidateIdentity(request.Nombre, request.Email, "guest");
+        if (!RutHelper.Validar(request.Rut))
+            throw new InvalidOperationException("El RUT ingresado no es válido.");
+
+        var email = NormalizeEmail(request.Email);
+        var usuario = await _db.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
+
+        if (usuario is not null && usuario.Activo)
+            throw new InvalidOperationException("El email ya está registrado. Inicia sesión con código por correo.");
+
+        if (usuario is null)
+        {
+            usuario = new Usuario
+            {
+                Nombre = request.Nombre.Trim(),
+                Rut = request.Rut.Trim(),
+                Email = email,
+                PasswordHash = string.Empty,
+                Rol = "CLIENTE",
+                EsInvitado = false,
+                Activo = false
+            };
+            _db.Usuarios.Add(usuario);
+        }
+        else
+        {
+            // Un invitado que decide crear cuenta conserva sus pedidos y pasa a ser cliente.
+            usuario.Nombre = request.Nombre.Trim();
+            usuario.Rut = request.Rut.Trim();
+            usuario.EsInvitado = false;
+            usuario.PasswordHash = string.Empty;
+        }
+
+        var code = System.Security.Cryptography.RandomNumberGenerator.GetInt32(100_000, 1_000_000).ToString();
+        usuario.OtpCode = BCrypt.Net.BCrypt.HashPassword(code);
+        usuario.OtpExpiry = DateTime.UtcNow.AddMinutes(10);
+        await _db.SaveChangesAsync();
+        await _emailService.SendOtpAsync(usuario.Email, usuario.Nombre, code);
+
+        return new RegisterPendingResponse("Código de confirmación enviado a tu correo.", email);
+    }
+
     public async Task<bool> SendOtpAsync(string email)
     {
         var usuario = await _db.Usuarios.FirstOrDefaultAsync(u => u.Email == NormalizeEmail(email));
@@ -224,9 +269,6 @@ public class AuthService : IAuthService
         var usuario = await _db.Usuarios.FirstOrDefaultAsync(u => u.Email == NormalizeEmail(request.Email))
             ?? throw new InvalidOperationException("Código inválido o expirado.");
 
-        if (!usuario.Activo)
-            throw new InvalidOperationException("La cuenta está desactivada.");
-
         if (usuario.OtpCode is null ||
             usuario.OtpExpiry is null ||
             usuario.OtpExpiry <= DateTime.UtcNow ||
@@ -235,7 +277,8 @@ public class AuthService : IAuthService
             throw new InvalidOperationException("Código inválido o expirado.");
         }
 
-        // Limpiar OTP
+        // Un registro por OTP se activa al validar su primer código.
+        usuario.Activo = true;
         usuario.OtpCode   = null;
         usuario.OtpExpiry = null;
         await _db.SaveChangesAsync();

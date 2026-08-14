@@ -85,12 +85,13 @@ export default function CatalogoPage() {
       </header>
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
-        <div className="mb-8 border-b border-white/10 pb-5">
-          <div className="flex flex-wrap items-center gap-2" aria-label="Filtrar por categoría">
-            <button onClick={() => handleCategoriaChange(null)} className={`rounded-full px-4 py-2 text-sm font-medium transition ${categoriaId === null ? 'bg-brand text-black' : 'border border-white/10 bg-dark-surface text-dark-muted hover:border-brand/60 hover:text-dark-text'}`}>Todo</button>
-            {categoriasData.map((cat) => <button key={cat.id} onClick={() => handleCategoriaChange(cat.id)} className={`rounded-full px-4 py-2 text-sm font-medium transition ${categoriaId === cat.id ? 'bg-brand text-black' : 'border border-white/10 bg-dark-surface text-dark-muted hover:border-brand/60 hover:text-dark-text'}`}>{cat.nombre}</button>)}
+        <section className="mb-10" aria-labelledby="category-heading">
+          <div className="mb-4 flex items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">Explora por estilo</p><h2 id="category-heading" className="mt-2 font-anta text-2xl text-dark-text">Colecciones</h2></div>{categoriaId !== null && <button onClick={() => handleCategoriaChange(null)} className="text-sm font-semibold text-brand transition hover:text-brand-accent">Ver todo</button>}</div>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Filtrar por categoría">
+            <button onClick={() => handleCategoriaChange(null)} className={`group overflow-hidden rounded-2xl border text-left transition ${categoriaId === null ? 'border-brand bg-brand text-black' : 'border-white/10 bg-dark-surface hover:border-brand/50'}`}><div className={`flex h-24 items-center justify-center text-3xl font-anta ${categoriaId === null ? 'bg-black/10' : 'bg-brand/10 text-brand'}`}>✦</div><div className="p-3"><p className={`text-sm font-bold ${categoriaId === null ? 'text-black' : 'text-dark-text'}`}>Todo</p><p className={`mt-1 text-xs ${categoriaId === null ? 'text-black/60' : 'text-dark-muted'}`}>Ver toda la tienda</p></div></button>
+            {categoriasData.map((cat) => <button key={cat.id} onClick={() => handleCategoriaChange(cat.id)} className={`group overflow-hidden rounded-2xl border text-left transition ${categoriaId === cat.id ? 'border-brand bg-brand/10' : 'border-white/10 bg-dark-surface hover:border-brand/50'}`}><div className="relative h-24 overflow-hidden bg-dark-surface-2">{cat.imagenUrl ? <img src={cat.imagenUrl} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" onError={(event) => { event.currentTarget.style.display = 'none'; }} /> : <div className="grid h-full place-items-center bg-brand/10 text-3xl font-anta text-brand">{cat.nombre.charAt(0).toUpperCase()}</div>}<div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" /></div><div className="p-3"><p className="truncate text-sm font-bold text-dark-text">{cat.nombre}</p><p className="mt-1 line-clamp-2 min-h-8 text-xs leading-4 text-dark-muted">{cat.descripcion || 'Descubre nuestra selección.'}</p></div></button>)}
           </div>
-        </div>
+        </section>
 
         <main>
           <div className="mb-7 flex flex-wrap items-center justify-between gap-3">

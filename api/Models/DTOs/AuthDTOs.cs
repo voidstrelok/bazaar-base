@@ -4,6 +4,7 @@ public record RegisterRequest(string Nombre, string Rut, string Email, string Pa
 public record LoginRequest(string Email, string Password);
 public record RefreshTokenRequest(string AccessToken, string RefreshToken);
 public record GuestRegisterRequest(string Nombre, string Rut, string Email);
+public record OtpRegisterRequest(string Nombre, string Rut, string Email);
 public record SendOtpRequest(string Email);
 public record VerifyOtpRequest(string Email, string Code);
 public record ConfirmEmailRequest(string Email, string Code);

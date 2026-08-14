@@ -119,6 +119,30 @@ public class PedidosController : ControllerBase
         return Ok(pedidos);
     }
 
+    // GET api/pedidos/admin/dashboard
+    [HttpGet("admin/dashboard")]
+    [Authorize(Policy = "RequireAdmin")]
+    public async Task<IActionResult> GetDashboard()
+    {
+        var dashboard = await _pedidoService.GetDashboardAsync();
+        return Ok(dashboard);
+    }
+
+    // GET api/pedidos/admin/{id}
+    [HttpGet("admin/{id:int}")]
+    [Authorize(Policy = "RequireAdmin")]
+    public async Task<IActionResult> GetAdminById(int id)
+    {
+        try
+        {
+            return Ok(await _pedidoService.GetPedidoAdminAsync(id));
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
     // PUT api/pedidos/admin/{id}/estado
     [HttpPut("admin/{id:int}/estado")]
     [Authorize(Policy = "RequireAdmin")]

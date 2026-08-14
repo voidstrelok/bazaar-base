@@ -15,11 +15,13 @@ public class ProductosController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IStorageService _storage;
+    private readonly ILogger<ProductosController> _logger;
 
-    public ProductosController(AppDbContext db, IStorageService storage)
+    public ProductosController(AppDbContext db, IStorageService storage, ILogger<ProductosController> logger)
     {
         _db = db;
         _storage = storage;
+        _logger = logger;
     }
 
     // GET api/productos
@@ -123,8 +125,16 @@ public class ProductosController : ControllerBase
             ImagenUrl = imagenUrl
         };
 
-        _db.Productos.Add(producto);
-        await _db.SaveChangesAsync();
+        try
+        {
+            _db.Productos.Add(producto);
+            await _db.SaveChangesAsync();
+        }
+        catch
+        {
+            await TryDeleteImageAsync(imagenUrl, "compensar la creación fallida del producto");
+            throw;
+        }
 
         await _db.Entry(producto).Reference(x => x.Categoria).LoadAsync();
 
@@ -156,32 +166,76 @@ public class ProductosController : ControllerBase
         if (await _db.Productos.AnyAsync(p => p.Slug == slug && p.Id != id))
             return Conflict(new { message = "Ya existe un producto con ese nombre." });
 
+        var imagenAnterior = producto.ImagenUrl;
+        string? imagenNueva = null;
+
         try
         {
             if (imagen is not null)
                 await ImageValidation.ValidateAsync(imagen);
             if (imagen is not null)
-            {
-                if (!string.IsNullOrWhiteSpace(producto.ImagenUrl))
-                    await _storage.DeleteAsync(producto.ImagenUrl);
-
-                producto.ImagenUrl = await _storage.UploadAsync(imagen, "productos");
-            }
+                imagenNueva = await _storage.UploadAsync(imagen, "productos");
         }
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
         }
 
-        producto.Nombre = request.Nombre;
-        producto.Slug = slug;
-        producto.Descripcion = request.Descripcion;
-        producto.Precio = request.Precio;
-        producto.Stock = request.Stock;
-        producto.CategoriaId = request.CategoriaId;
-        producto.Activo = request.Activo;
+        if (imagenNueva is not null)
+        {
+            try
+            {
+                // The old URL is part of the update predicate. If another
+                // image update won the race, this prevents the new upload
+                // from becoming the unreferenced one.
+                var affected = await _db.Productos
+                    .Where(p => p.Id == id && p.ImagenUrl == imagenAnterior)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(p => p.Nombre, request.Nombre)
+                        .SetProperty(p => p.Slug, slug)
+                        .SetProperty(p => p.Descripcion, request.Descripcion)
+                        .SetProperty(p => p.Precio, request.Precio)
+                        .SetProperty(p => p.Stock, request.Stock)
+                        .SetProperty(p => p.CategoriaId, request.CategoriaId)
+                        .SetProperty(p => p.ImagenUrl, imagenNueva)
+                        .SetProperty(p => p.Activo, request.Activo));
 
-        await _db.SaveChangesAsync();
+                if (affected == 0)
+                {
+                    await TryDeleteImageAsync(imagenNueva, "compensar una actualización concurrente del producto");
+                    return Conflict(new { message = "El producto fue modificado mientras se actualizaba la imagen. Inténtalo nuevamente." });
+                }
+
+                _db.ChangeTracker.Clear();
+                producto = await _db.Productos
+                    .Include(p => p.Categoria)
+                    .SingleAsync(p => p.Id == id);
+            }
+            catch
+            {
+                await TryDeleteImageAsync(imagenNueva, "compensar la actualización fallida del producto");
+                throw;
+            }
+        }
+        else
+        {
+            producto.Nombre = request.Nombre;
+            producto.Slug = slug;
+            producto.Descripcion = request.Descripcion;
+            producto.Precio = request.Precio;
+            producto.Stock = request.Stock;
+            producto.CategoriaId = request.CategoriaId;
+            producto.Activo = request.Activo;
+
+            await _db.SaveChangesAsync();
+        }
+
+        if (imagenNueva is not null &&
+            !string.IsNullOrWhiteSpace(imagenAnterior) &&
+            !string.Equals(imagenAnterior, imagenNueva, StringComparison.Ordinal))
+        {
+            await TryDeleteImageAsync(imagenAnterior, "limpiar la imagen anterior del producto");
+        }
 
         await _db.Entry(producto).Reference(x => x.Categoria).LoadAsync();
 
@@ -202,5 +256,20 @@ public class ProductosController : ControllerBase
         await _db.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    private async Task TryDeleteImageAsync(string? url, string operation)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return;
+
+        try
+        {
+            await _storage.DeleteAsync(url);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "No se pudo {Operation}. URL: {ImageUrl}", operation, url);
+        }
     }
 }

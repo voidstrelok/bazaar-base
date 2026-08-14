@@ -22,7 +22,9 @@ public class UsuariosController : ControllerBase
     public async Task<IActionResult> GetAll(
         [FromQuery] int pagina = 1,
         [FromQuery] int tamano = 20,
-        [FromQuery] string? busqueda = null)
+        [FromQuery] string? busqueda = null,
+        [FromQuery] string? rol = null,
+        [FromQuery] bool? activo = null)
     {
         pagina = Math.Max(1, pagina);
         tamano = Math.Clamp(tamano, 1, 100);
@@ -33,6 +35,12 @@ public class UsuariosController : ControllerBase
             var lower = busqueda.ToLower();
             query = query.Where(u => u.Nombre.ToLower().Contains(lower) || u.Email.ToLower().Contains(lower));
         }
+
+        if (!string.IsNullOrWhiteSpace(rol))
+            query = query.Where(u => u.Rol == rol.ToUpper());
+
+        if (activo.HasValue)
+            query = query.Where(u => u.Activo == activo.Value);
 
         var total = await query.CountAsync();
         var usuarios = await query

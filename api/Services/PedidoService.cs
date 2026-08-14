@@ -201,17 +201,87 @@ public class PedidoService : IPedidoService
         return pedidos.Select(ToDto);
     }
 
-    public async Task<IEnumerable<PedidoDto>> GetAllPedidosAsync(int pagina, int tamano)
+    public async Task<PedidoListResponse> GetAllPedidosAsync(int pagina, int tamano)
     {
-        var pedidos = await _db.Pedidos
+        var query = _db.Pedidos
             .Include(p => p.Detalles).ThenInclude(d => d.Producto)
             .Include(p => p.Pago)
+            .Include(p => p.Usuario)
+            .AsQueryable();
+        var total = await query.CountAsync();
+        var pedidos = await query
             .OrderByDescending(p => p.FechaCreacion)
             .Skip((pagina - 1) * tamano)
             .Take(tamano)
             .ToListAsync();
 
-        return pedidos.Select(ToDto);
+        return new PedidoListResponse(total, pagina, tamano, pedidos.Select(ToDto));
+    }
+
+    public async Task<PedidoDto> GetPedidoAdminAsync(int pedidoId)
+    {
+        var pedido = await _db.Pedidos
+            .Include(p => p.Detalles).ThenInclude(d => d.Producto)
+            .Include(p => p.Pago)
+            .Include(p => p.Usuario)
+            .FirstOrDefaultAsync(p => p.Id == pedidoId)
+            ?? throw new KeyNotFoundException("Pedido no encontrado.");
+
+        return ToDto(pedido);
+    }
+
+    public async Task<PedidoDashboardDto> GetDashboardAsync()
+    {
+        var totalPedidos = await _db.Pedidos.CountAsync();
+        var ingresosTotales = await _db.Pedidos
+            .Where(p => p.Pago != null && p.Pago.Estado == EstadoPago.Aprobado)
+            .Select(p => (decimal?)p.Total)
+            .SumAsync() ?? 0m;
+
+        var estados = await _db.Pedidos
+            .GroupBy(p => p.Estado)
+            .Select(group => new { Estado = group.Key, Total = group.Count() })
+            .ToDictionaryAsync(item => item.Estado, item => item.Total);
+
+        var desde = DateTime.UtcNow.Date.AddDays(-6);
+        var periodo = await _db.Pedidos
+            .Include(p => p.Pago)
+            .Where(p => p.FechaCreacion >= desde)
+            .OrderBy(p => p.FechaCreacion)
+            .ToListAsync();
+
+        var ventasPorDia = Enumerable.Range(0, 7)
+            .Select(offset =>
+            {
+                var fecha = desde.AddDays(offset);
+                var pedidosDia = periodo.Where(p => p.FechaCreacion.Date == fecha);
+                return new PedidoTrendPointDto(
+                    fecha,
+                    pedidosDia.Count(),
+                    pedidosDia
+                        .Where(p => p.Pago?.Estado == EstadoPago.Aprobado)
+                        .Sum(p => p.Total));
+            })
+            .ToList();
+
+        var ultimosPedidos = await _db.Pedidos
+            .Include(p => p.Detalles).ThenInclude(d => d.Producto)
+            .Include(p => p.Pago)
+            .Include(p => p.Usuario)
+            .OrderByDescending(p => p.FechaCreacion)
+            .Take(5)
+            .ToListAsync();
+
+        return new PedidoDashboardDto(
+            totalPedidos,
+            ingresosTotales,
+            estados.GetValueOrDefault(EstadoPedido.Pendiente),
+            estados.GetValueOrDefault(EstadoPedido.Pagado),
+            estados.GetValueOrDefault(EstadoPedido.Enviado),
+            estados.GetValueOrDefault(EstadoPedido.Entregado),
+            estados.GetValueOrDefault(EstadoPedido.Cancelado),
+            ventasPorDia,
+            ultimosPedidos.Select(ToDto));
     }
 
     public async Task UpdateEstadoAsync(int pedidoId, EstadoPedido estado)
@@ -256,6 +326,8 @@ public class PedidoService : IPedidoService
             )),
             EstadoPago: p.Pago?.Estado.ToString(),
             FechaPago: p.Pago?.FechaPago,
-            ReferenciaPago: p.Pago?.ReferenciaPago
+            ReferenciaPago: p.Pago?.ReferenciaPago,
+            ClienteNombre: p.Usuario?.Nombre,
+            ClienteEmail: p.Usuario?.Email
         );
 }

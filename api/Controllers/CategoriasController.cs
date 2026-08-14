@@ -15,11 +15,13 @@ public class CategoriasController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IStorageService _storage;
+    private readonly ILogger<CategoriasController> _logger;
 
-    public CategoriasController(AppDbContext db, IStorageService storage)
+    public CategoriasController(AppDbContext db, IStorageService storage, ILogger<CategoriasController> logger)
     {
         _db = db;
         _storage = storage;
+        _logger = logger;
     }
 
     // GET api/categorias
@@ -84,8 +86,16 @@ public class CategoriasController : ControllerBase
             ImagenUrl = imagenUrl
         };
 
-        _db.Categorias.Add(categoria);
-        await _db.SaveChangesAsync();
+        try
+        {
+            _db.Categorias.Add(categoria);
+            await _db.SaveChangesAsync();
+        }
+        catch
+        {
+            await TryDeleteImageAsync(imagenUrl, "compensar la creación fallida de la categoría");
+            throw;
+        }
 
         return CreatedAtAction(nameof(GetById), new { id = categoria.Id },
             new CategoriaDto(categoria.Id, categoria.Nombre, categoria.Slug,
@@ -109,29 +119,68 @@ public class CategoriasController : ControllerBase
         if (await _db.Categorias.AnyAsync(c => c.Slug == slug && c.Id != id))
             return Conflict(new { message = "Ya existe una categoría con ese nombre." });
 
+        var imagenAnterior = categoria.ImagenUrl;
+        string? imagenNueva = null;
+
         try
         {
             if (imagen is not null)
                 await ImageValidation.ValidateAsync(imagen);
             if (imagen is not null)
-            {
-                if (!string.IsNullOrWhiteSpace(categoria.ImagenUrl))
-                    await _storage.DeleteAsync(categoria.ImagenUrl);
-
-                categoria.ImagenUrl = await _storage.UploadAsync(imagen, "categorias");
-            }
+                imagenNueva = await _storage.UploadAsync(imagen, "categorias");
         }
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
         }
 
-        categoria.Nombre = request.Nombre;
-        categoria.Slug = slug;
-        categoria.Descripcion = request.Descripcion;
-        categoria.Activo = request.Activo;
+        if (imagenNueva is not null)
+        {
+            try
+            {
+                // The old URL is part of the update predicate. If another
+                // image update won the race, this prevents the new upload
+                // from becoming the unreferenced one.
+                var affected = await _db.Categorias
+                    .Where(c => c.Id == id && c.ImagenUrl == imagenAnterior)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(c => c.Nombre, request.Nombre)
+                        .SetProperty(c => c.Slug, slug)
+                        .SetProperty(c => c.Descripcion, request.Descripcion)
+                        .SetProperty(c => c.ImagenUrl, imagenNueva)
+                        .SetProperty(c => c.Activo, request.Activo));
 
-        await _db.SaveChangesAsync();
+                if (affected == 0)
+                {
+                    await TryDeleteImageAsync(imagenNueva, "compensar una actualización concurrente de la categoría");
+                    return Conflict(new { message = "La categoría fue modificada mientras se actualizaba la imagen. Inténtalo nuevamente." });
+                }
+
+                _db.ChangeTracker.Clear();
+                categoria = await _db.Categorias.SingleAsync(c => c.Id == id);
+            }
+            catch
+            {
+                await TryDeleteImageAsync(imagenNueva, "compensar la actualización fallida de la categoría");
+                throw;
+            }
+        }
+        else
+        {
+            categoria.Nombre = request.Nombre;
+            categoria.Slug = slug;
+            categoria.Descripcion = request.Descripcion;
+            categoria.Activo = request.Activo;
+
+            await _db.SaveChangesAsync();
+        }
+
+        if (imagenNueva is not null &&
+            !string.IsNullOrWhiteSpace(imagenAnterior) &&
+            !string.Equals(imagenAnterior, imagenNueva, StringComparison.Ordinal))
+        {
+            await TryDeleteImageAsync(imagenAnterior, "limpiar la imagen anterior de la categoría");
+        }
 
         return Ok(new CategoriaDto(categoria.Id, categoria.Nombre, categoria.Slug,
             categoria.Descripcion, categoria.ImagenUrl, categoria.Activo));
@@ -149,5 +198,20 @@ public class CategoriasController : ControllerBase
         await _db.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    private async Task TryDeleteImageAsync(string? url, string operation)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return;
+
+        try
+        {
+            await _storage.DeleteAsync(url);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "No se pudo {Operation}. URL: {ImageUrl}", operation, url);
+        }
     }
 }

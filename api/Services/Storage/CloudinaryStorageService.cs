@@ -10,7 +10,9 @@ public class CloudinaryStorageService : IStorageService
     public CloudinaryStorageService(IConfiguration configuration)
     {
         var cloudinaryUrl = configuration["Cloudinary:Url"]
-            ?? throw new InvalidOperationException("Cloudinary:Url is not configured.");
+            ?? configuration["Storage:CloudinaryUrl"];
+        if (string.IsNullOrWhiteSpace(cloudinaryUrl))
+            throw new InvalidOperationException("Cloudinary:Url is not configured.");
         _cloudinary = new Cloudinary(cloudinaryUrl);
         _cloudinary.Api.Secure = true;
     }
@@ -44,7 +46,9 @@ public class CloudinaryStorageService : IStorageService
             return;
 
         var deleteParams = new DeletionParams(publicId);
-        await _cloudinary.DestroyAsync(deleteParams);
+        var result = await _cloudinary.DestroyAsync(deleteParams);
+        if (result.Error is not null)
+            throw new InvalidOperationException($"Cloudinary delete error: {result.Error.Message}");
     }
 
     private static string ExtractPublicId(string url)
